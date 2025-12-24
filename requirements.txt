@@ -1,9 +1,0 @@
-numpy
-pandas
-opencv-python
-matplotlib
-tqdm
-scipy
-pylint
-black
-
