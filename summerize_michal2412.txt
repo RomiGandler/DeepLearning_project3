@@ -1,5 +1,0 @@
-Notes:
-- I separated the data we genarated to test (~67) and train (~450)
-- We cannot directly clone the CUT repo inside our repo - it causes problems 
-- We do not need the model's code in our git - only in the colab. 
-- I opened a common colab file with the CUT model and added it also here CUT_model.ipynb
