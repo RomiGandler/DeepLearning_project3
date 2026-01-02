@@ -21,3 +21,6 @@ __pycache__/
 
 # Colab / notebooks
 *.ipynb_checkpoints
+
+#chessred2k
+chessred2k/

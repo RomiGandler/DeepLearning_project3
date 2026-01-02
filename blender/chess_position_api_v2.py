@@ -190,10 +190,45 @@ def render_all_views(board_info, view='black', output_name="render"):
     scene.render.image_settings.file_format = 'PNG' # PNG for quality
     scene.cycles.use_denoising = True
     
+    # --- Enable GPU Robustly ---
     try:
         scene.cycles.device = 'GPU'
-    except:
-        pass
+        prefs = bpy.context.preferences
+        cprefs = prefs.addons['cycles'].preferences
+        
+        # Try to find the best compute device type
+        # Force CUDA since user requested it
+        device_types = ['CUDA'] 
+        best_device = None
+        
+        # Refresh devices
+        cprefs.refresh_devices()
+        
+        for device_type in device_types:
+            try:
+                cprefs.compute_device_type = device_type
+                # Check if we have devices for this type
+                found = False
+                for device in cprefs.devices:
+                    if device.type == device_type:
+                         device.use = True
+                         found = True
+                         print(f"Enabled GPU: {device.name} ({device_type})")
+                if found:
+                    best_device = device_type
+                    break
+            except Exception as e:
+                pass
+                
+        if best_device:
+             print(f"Using Compute Device: {best_device}")
+        else:
+             print("ERROR: No CUDA GPU found! Failing as requested.")
+             raise Exception("CUDA GPU required but not found.")
+
+    except Exception as e:
+        print(f"Failed to configure GPU: {e}")
+        raise e # Fail loudly
     
     # 4. Setup camera
     camera_z = center.z + camera_height
