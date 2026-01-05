@@ -1,0 +1,8 @@
+!git clone https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix.git cycleGAN
+%cd cycleGAN
+
+%pip install dominate
+
+python train.py --dataroot ./datasets/chess_data --name chess_data_cyclegan --model cycle_gan --use_wandb 
+
+Note: to use wandb needs to signin on chrome and then login with api key 
