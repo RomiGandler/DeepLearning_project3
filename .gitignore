@@ -58,6 +58,7 @@ Thumbs.db
 BBDM/friefeld_data/
 BBDM/pgn_data/
 BBDM/chess_data/
+chess_data/
 
 # Training outputs and checkpoints
 BBDM/results/
