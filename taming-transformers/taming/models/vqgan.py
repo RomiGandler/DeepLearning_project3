@@ -73,6 +73,23 @@ class VQModel(pl.LightningModule):
         dec = self.decode(quant)
         return dec, diff
 
+    # @torch.no_grad()
+    # def forward_with_embedding(self, input):
+    #     """
+    #     Forward pass that also returns the quantized embedding for visualization.
+        
+    #     Args:
+    #         input: Input image tensor (B, C, H, W)
+            
+    #     Returns:
+    #         dec: Reconstructed image
+    #         quant: Quantized embedding (the latent representation)
+    #         diff: Embedding loss
+    #     """
+    #     quant, diff, _ = self.encode(input)
+    #     dec = self.decode(quant)
+    #     return dec, quant, diff
+
     def get_input(self, batch, k):
         x = batch[k]
         if len(x.shape) == 3:

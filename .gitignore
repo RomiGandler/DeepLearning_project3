@@ -58,11 +58,13 @@ Thumbs.db
 BBDM/friefeld_data/
 BBDM/pgn_data/
 BBDM/chess_data/
+BBDM/data_10.01_no_hands/
 chess_data/
 
 # Training outputs and checkpoints
 BBDM/results/
 BBDM/outputs/
+BBDM/training_model_new/
 
 # SAM model and runs
 BBDM/SAM/runs/
@@ -84,6 +86,7 @@ taming-transformers/test_synt/
 # Root Level Outputs
 # -----------------------------------------------------------------------------
 outputs/
+new_train/
 
 # -----------------------------------------------------------------------------
 # CycleGAN Data (if any)
@@ -136,3 +139,5 @@ controlNet/outputs/
 .run_sbatch.sh
 .sam_sbatch.sh
 .bbdm_sbatch.sh
+.lbbdm_sbatch.sh
+.mlbbdm_sbatch.sh

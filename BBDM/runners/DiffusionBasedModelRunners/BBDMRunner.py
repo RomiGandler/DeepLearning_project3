@@ -178,6 +178,7 @@ class BBDMRunner(DiffusionBaseRunner):
     @torch.no_grad()
     def sample(self, net, batch, sample_path, stage='train'):
         sample_path = make_dir(os.path.join(sample_path, f'{stage}_sample'))
+        progress_path = make_dir(os.path.join(sample_path, f'{stage}_progress'))
         reverse_sample_path = make_dir(os.path.join(sample_path, 'reverse_sample'))
         reverse_one_step_path = make_dir(os.path.join(sample_path, 'reverse_one_step_samples'))
 
@@ -202,7 +203,34 @@ class BBDMRunner(DiffusionBaseRunner):
         #                  writer_tag=f'{stage}_one_step_sample' if stage != 'test' else None)
         #
         # sample = samples[-1]
-        sample = net.sample(x_cond, clip_denoised=self.config.testing.clip_denoised).to('cpu')
+
+        # Call model with sample_mid_step=True ONLY if not training (i.e. validation or test)
+        is_validation = stage != 'train'
+        
+        if is_validation:
+            print(f"Generating progression samples in: {progress_path}")
+            samples_list = net.sample(x_cond,
+                                      clip_denoised=self.config.testing.clip_denoised,
+                                      sample_mid_step=True)
+            
+            # Loop through results and save each frame
+            for step_idx, sample_tensor in samples_list:
+                # Convert tensor to grid image
+                image_grid = get_image_grid(sample_tensor, grid_size, to_normal=self.config.data.dataset_config.to_normal)
+                im = Image.fromarray(image_grid)
+
+                # Save file: e.g., "progress_step_020.png"
+                filename = f"progress_step_{step_idx:04d}.png"
+                im.save(os.path.join(progress_path, filename))
+            
+            # Use the last sample for the standard output
+            sample = samples_list[-1][1]
+        else:
+            # During training, skip the progression logic to save time
+            sample = net.sample(x_cond,
+                                clip_denoised=self.config.testing.clip_denoised,
+                                sample_mid_step=False).to('cpu')
+
         image_grid = get_image_grid(sample, grid_size, to_normal=self.config.data.dataset_config.to_normal)
         im = Image.fromarray(image_grid)
         im.save(os.path.join(sample_path, 'skip_sample.png'))

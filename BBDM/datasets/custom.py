@@ -50,6 +50,30 @@ class CustomAlignedDataset(Dataset):
         return self.imgs_ori[i], self.imgs_cond[i]
 
 
+@Registers.datasets.register_with_name('masked_aligned')
+class MaskedAlignedDataset(Dataset):
+    def __init__(self, dataset_config, stage='train'):
+        super().__init__()
+        self.image_size = (dataset_config.image_size, dataset_config.image_size)
+        image_paths_ori = get_image_paths_from_dir(os.path.join(dataset_config.dataset_path, f'{stage}/B'))
+        image_paths_cond = get_image_paths_from_dir(os.path.join(dataset_config.dataset_path, f'{stage}/A'))
+        image_paths_mask = get_image_paths_from_dir(os.path.join(dataset_config.dataset_path, f'{stage}/masks'))
+        
+        self.flip = dataset_config.flip if stage == 'train' else False
+        self.to_normal = dataset_config.to_normal
+
+        self.imgs_ori = ImagePathDataset(image_paths_ori, self.image_size, flip=self.flip, to_normal=self.to_normal)
+        self.imgs_cond = ImagePathDataset(image_paths_cond, self.image_size, flip=self.flip, to_normal=self.to_normal)
+        # Masks kept in [0, 1] range usually, and 1 channel, not normalized to [-1, 1]
+        self.imgs_mask = ImagePathDataset(image_paths_mask, self.image_size, flip=self.flip, to_normal=False)
+
+    def __len__(self):
+        return len(self.imgs_ori)
+
+    def __getitem__(self, i):
+        return self.imgs_ori[i], self.imgs_cond[i], self.imgs_mask[i]
+
+
 @Registers.datasets.register_with_name('custom_colorization_LAB')
 class CustomColorizationLABDataset(Dataset):
     def __init__(self, dataset_config, stage='train'):

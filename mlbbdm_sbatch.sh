@@ -4,13 +4,13 @@
 # EDIT THESE PARAMETERS GLOBALLY - they will be used in both #SBATCH directives
 # and in the bash script
 # ============================================================================
-JOB_NAME="vqgan_finetune"
-MEM="40G"
-GPUS="rtx_2080:1"
+JOB_NAME="finetune_mlbbdm_scale_075"
+MEM="20G"
+GPUS="rtx_3090:1"
 # =====================================================================ß=======
 # INFERRED VALUES - automatically derived from the parameters above
 # ============================================================================
-SCRIPT_FILE="$(pwd)/taming-transformers/main.py"
+SCRIPT_FILE="$(pwd)/BBDM/main.py"
 OUTPUT_FILE="$(pwd)/outputs/${JOB_NAME}.out"
 SBATCH_FILE="$(pwd)/outputs/${JOB_NAME}.sbatch"
 
@@ -29,7 +29,7 @@ cat > "${SBATCH_FILE}" << 'EOF'
 #SBATCH --mail-type=BEGIN,END,FAIL ### conditions for sending the email. ALL,BEGIN,END,FAIL, REQUEU, NONE
 #SBATCH --mem=MEM_PLACEHOLDER
 #SBATCH --gpus=GPUS_PLACEHOLDER ### number of GPUs. Choosing type e.g.: #SBATCH --gpus=gtx_1080:1 , or rtx_2080, or rtx_3090 . Allocating more than 1 requires the IT team's permission
-#SBATCH --tasks=1 # 1 process – use for processing of few programs concurrently in a job (with srun). Use just 1 otherwise
+##SBATCH --tasks=1 # 1 process – use for processing of few programs concurrently in a job (with srun). Use just 1 otherwise
 
 ### Print some data to output file ###
 echo "#########################################################"
@@ -40,10 +40,9 @@ echo "#########################################################"
 ### Start your code below ####
 module load cuda/12.4
 source activate /home/avinoamd/.conda/envs/roni
-export HF_TOKEN=HF_TOKEN_PLACEHOLDER
-export NCCL_P2P_DISABLE=1
-cd /home/avinoamd/roni/taming-transformers
-/home/avinoamd/.conda/envs/taming/bin/python -u main.py --base configs/chess_finetune.yaml -t True --gpus 0,
+cd /home/avinoamd/roni/BBDM
+export PYTHONNOUSERSITE=1
+/home/avinoamd/.conda/envs/roni/bin/python -u main.py
 
 echo "#########################################################"
 echo "Script ended successfully"
