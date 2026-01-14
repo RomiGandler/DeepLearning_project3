@@ -102,31 +102,42 @@ class LatentBrownianBridgeModel(BrownianBridgeModel):
     @torch.no_grad()
     def sample(self, x_cond, clip_denoised=False, sample_mid_step=False):
         x_cond_latent = self.encode(x_cond, cond=True)
-        if sample_mid_step:
-            temp, one_step_temp = self.p_sample_loop(y=x_cond_latent,
-                                                     context=self.get_cond_stage_context(x_cond),
-                                                     clip_denoised=clip_denoised,
-                                                     sample_mid_step=sample_mid_step)
-            out_samples = []
-            for i in tqdm(range(len(temp)), initial=0, desc="save output sample mid steps", dynamic_ncols=True,
-                          smoothing=0.01):
-                with torch.no_grad():
-                    out = self.decode(temp[i].detach(), cond=False)
-                out_samples.append(out.to('cpu'))
 
-            one_step_samples = []
-            for i in tqdm(range(len(one_step_temp)), initial=0, desc="save one step sample mid steps",
-                          dynamic_ncols=True,
-                          smoothing=0.01):
+        if sample_mid_step:
+            # 1. Run the full sampling loop in latent space
+            # This returns a LIST of all latent steps. It's fast because no decoding happens yet.
+            # temp contains [latent_t0, latent_t1, ..., latent_tN]
+            temp, _ = self.p_sample_loop(y=x_cond_latent,
+                                         context=self.get_cond_stage_context(x_cond),
+                                         clip_denoised=clip_denoised,
+                                         sample_mid_step=True)
+
+            out_samples = []
+            # 2. Define interval - every 20 steps (adjustable)
+            # If total steps = 200, this gives steps: 0, 20, 40, ..., 180, 200
+            save_interval = 20
+
+            print(f"Sampling total steps: {len(temp)}. Decoding every {save_interval} steps.")
+
+            # 3. Iterate and decode only the selected frames to save memory/time
+            for i in tqdm(range(0, len(temp), save_interval), desc="decoding intermediate steps"):
                 with torch.no_grad():
-                    out = self.decode(one_step_temp[i].detach(), cond=False)
-                one_step_samples.append(out.to('cpu'))
-            return out_samples, one_step_samples
+                    # Decode latent -> pixel space
+                    out = self.decode(temp[i].detach(), cond=False)
+                out_samples.append((i, out.to('cpu')))
+
+            # Ensure the final clean image is always included
+            if (len(temp) - 1) % save_interval != 0:
+                with torch.no_grad():
+                    out = self.decode(temp[-1].detach(), cond=False)
+                out_samples.append((len(temp) - 1, out.to('cpu')))
+
+            return out_samples
         else:
             temp = self.p_sample_loop(y=x_cond_latent,
                                       context=self.get_cond_stage_context(x_cond),
                                       clip_denoised=clip_denoised,
-                                      sample_mid_step=sample_mid_step)
+                                      sample_mid_step=False)
             x_latent = temp
             out = self.decode(x_latent, cond=False)
             return out

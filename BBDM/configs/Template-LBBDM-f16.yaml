@@ -13,10 +13,10 @@ testing:
   sample_num: 5
 
 data:
-  dataset_name: 'friefeld_data_after_finetuneVQGAN'
+  dataset_name: 'all_data_f16'
   dataset_type: 'custom_aligned'
   dataset_config:
-    dataset_path: 'friefeld_data'
+    dataset_path: '/home/avinoamd/roni/training_model_new'
     image_size: 256
     channels: 3
     to_normal: True
@@ -53,7 +53,7 @@ model:
 
   VQGAN:
     params:
-      ckpt_path: 'results/VQGAN/last.ckpt'
+      ckpt_path: '/home/avinoamd/roni/taming-transformers/logs/2026-01-09T16-49-51_chess_finetune/checkpoints/last.ckpt'
       embed_dim: 8
       n_embed: 16384
       ddconfig:
