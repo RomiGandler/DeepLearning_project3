@@ -33,7 +33,7 @@ This repository contains the implementation for synthetic-to-real chessboard ima
 
 | Model | Repository | Paper |
 |-------|-----------|-------|
-| **BBDM** | [bo-10000/BBDM](https://github.com/bo-10000/BBDM) | [arXiv:2205.07680](https://arxiv.org/abs/2205.07680) |
+| **BBDM** | [bo-10000/BBDM](https://github.com/xuekt98/BBDM?tab=readme-ov-file) | [arXiv:2205.07680](https://arxiv.org/abs/2205.07680) |
 | **VQGAN** | [CompVis/taming-transformers](https://github.com/CompVis/taming-transformers) | [arXiv:2012.09841](https://arxiv.org/abs/2012.09841) |
 | **SAM** | [ultralytics/ultralytics](https://github.com/ultralytics/ultralytics) | Segment Anything Model |
 
