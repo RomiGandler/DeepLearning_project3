@@ -1,0 +1,38 @@
+\begin{thebibliography}{1}
+
+\bibitem{sam2023}
+Alexander Kirillov, Eric Mintun, Nikhila Ravi, Hanzi Mao, Chloe Rolland, Laura Gustafson, Tete Xiao, Spencer Whitehead, Alexander~C Berg, Wan-Yen Lo, et~al.
+\newblock Segment anything.
+\newblock {\em arXiv preprint arXiv:2304.02643}, 2023.
+
+\bibitem{bbdm2023}
+Bo~Li, Kaitao Xue, Bin Liu, and Yu-Kun Lai.
+\newblock Bbdm: Image-to-image translation with brownian bridge diffusion models.
+\newblock {\em arXiv preprint arXiv:2205.07680}, 2023.
+
+\bibitem{cyclegan2017}
+Jun-Yan Zhu, Taesung Park, Phillip Isola, and Alexei~A Efros.
+\newblock Unpaired image-to-image translation using cycle-consistent adversarial networks.
+\newblock In {\em Proceedings of the IEEE International Conference on Computer Vision (ICCV)}, pages 2223--2232, 2017.
+
+\bibitem{cut2020}
+Taesung Park, Alexei~A Efros, Richard Zhang, and Jun-Yan Zhu.
+\newblock Contrastive learning for unpaired image-to-image translation.
+\newblock In {\em European Conference on Computer Vision (ECCV)}, pages 319--345. Springer, 2020.
+
+\bibitem{vqgan2021}
+Patrick Esser, Robin Rombach, and Bjorn Ommer.
+\newblock Taming transformers for high-resolution image synthesis.
+\newblock In {\em Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)}, pages 12873--12883, 2021.
+
+\bibitem{ddpm2020}
+Jonathan Ho, Ajay Jain, and Pieter Abbeel.
+\newblock Denoising diffusion probabilistic models.
+\newblock In {\em Advances in Neural Information Processing Systems (NeurIPS)}, volume~33, pages 6840--6851, 2020.
+
+\bibitem{lpips2018}
+Richard Zhang, Phillip Isola, Alexei~A Efros, Eli Shechtman, and Oliver Wang.
+\newblock The unreasonable effectiveness of deep features as a perceptual metric.
+\newblock In {\em Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)}, pages 586--595, 2018.
+
+\end{thebibliography}

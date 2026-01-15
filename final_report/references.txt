@@ -1,0 +1,13 @@
+references -
+Contrastive Learning for Unpaired Image-to-Image Translation - CUT model
+
+BBDM: Image-to-image Translation with Brownian Bridge Diffusion Models - BBDM
+
+Unpaired Image-to-Image Translation
+
+using Cycle-Consistent Adversarial Networks - CycleGAN
+
+Taming Transformers for High-Resolution Image Synthesis - VQGAN (taming)
+
+https://arxiv.org/pdf/2304.02643 - SAM model
+
