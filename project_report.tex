@@ -1,0 +1,301 @@
+\documentclass[12pt,a4paper]{article}
+
+% ============================================
+% PACKAGES
+% ============================================
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{hyperref}
+\usepackage{cite}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{subcaption}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage[margin=1in]{geometry}
+
+% ============================================
+% HYPERREF SETTINGS
+% ============================================
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,      
+    urlcolor=cyan,
+    citecolor=blue,
+}
+
+% ============================================
+% CODE LISTING SETTINGS
+% ============================================
+\lstset{
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    language=Python
+}
+
+% ============================================
+% TITLE INFORMATION
+% ============================================
+\title{\textbf{Synthetic-to-Real Image Translation\\for Chessboard Rendering}}
+
+\author{
+    Your Name \and 
+    Partner Name \\
+    \\
+    Department of Computer Science, [University Name]\\
+    \texttt{\{email1, email2\}@university.edu}
+}
+
+\date{\today}
+
+% ============================================
+% DOCUMENT
+% ============================================
+\begin{document}
+
+\maketitle
+
+% ============================================
+% ABSTRACT
+% ============================================
+\begin{abstract}
+In this project, we address the challenge of Synthetic-to-Real image translation for chessboard rendering. Our goal is to generate realistic chessboard images from synthetic layouts while preserving geometric consistency. We propose a robust pipeline utilizing the \textbf{Brownian Bridge Diffusion Model (BBDM)} integrated with a fine-tuned \textbf{VQGAN} for latent space representation. To ensure high-quality training data, we developed a preprocessing pipeline using \textbf{ffmpeg} for frame deduplication and the \textbf{Segment Anything Model (SAM)} for removing occluded samples (e.g., hands). While initial experiments with GAN-based methods (e.g., CUT) yielded suboptimal results, our diffusion-based approach demonstrates superior visual fidelity. We present quantitative and qualitative results, including training progression across epochs, demonstrating the effectiveness of our method.
+\end{abstract}
+
+% ============================================
+% 1. INTRODUCTION
+% ============================================
+\section{Introduction}
+\label{sec:introduction}
+
+\subsection{Task Description and Motivation}
+The task involves translating synthetic chessboard images—generated via rendering engines—into photorealistic images that mimic real-world capture conditions. This is crucial for bridging the domain gap in computer vision tasks where real labeled data is scarce but synthetic data is abundant.
+
+\subsection{Challenges and Goals}
+Key challenges include:
+\begin{itemize}
+    \item \textbf{Geometric Preservation:} The translation must not alter the position or identity of chess pieces.
+    \item \textbf{Data Quality:} Real-world data often contains artifacts (motion blur, occlusions by hands) that can degrade model performance.
+    \item \textbf{Texture Realism:} Accurately synthesizing lighting, shadows, and material properties.
+\end{itemize}
+
+\subsection{Main Contributions}
+Our main contributions are:
+\begin{enumerate}
+    \item A comprehensive data curation pipeline using \textbf{ffmpeg} for temporal filtering and \textbf{SAM} \cite{sam2023} for occlusion removal.
+    \item An enhanced synthetic data generation process using \textbf{Blender} with improved diversity (angles, lighting).
+    \item Implementation and fine-tuning of a \textbf{BBDM} \cite{bbdm2023} architecture coupled with \textbf{VQGAN} \cite{vqgan2021} for high-fidelity image-to-image translation.
+    \item A customized loss function strategy tailored for chessboard structure preservation.
+\end{enumerate}
+
+% ============================================
+% 2. RELATED WORK
+% ============================================
+\section{Related Work}
+\label{sec:related}
+
+\subsection{Generative Adversarial Networks (GANs)}
+GANs have been the standard for Image-to-Image (I2I) translation. Notable models include \textbf{Pix2Pix} for paired data and \textbf{CycleGAN} \cite{cyclegan2017} or \textbf{CUT} (Contrastive Unpaired Translation) \cite{cut2020} for unpaired data. We initially explored these methods but found them limited in handling the complex texture mapping required for this task.
+
+\subsection{Vector Quantized Models (VQGAN)}
+\textbf{VQGAN} \cite{vqgan2021} combines convolutional approaches with transformers by learning a discrete codebook of image constituents. It serves as a powerful perceptual compression stage, allowing subsequent models to operate in a lower-dimensional latent space without losing high-frequency details.
+
+\subsection{Diffusion Models and BBDM}
+Diffusion models, such as DDPM \cite{ddpm2020}, have recently surpassed GANs in generation quality. Specifically, \textbf{BBDM} \cite{bbdm2023} models the translation between two domains as a stochastic process governed by a Brownian Bridge. This allows for direct image-to-image translation without requiring cycle consistency, making it highly suitable for paired synthetic-to-real tasks.
+
+\subsection{Segmentation Foundation Models (SAM)}
+The \textbf{Segment Anything Model (SAM)} \cite{sam2023} has revolutionized semantic segmentation. We leverage SAM not for generation, but as a robust filtering tool to detect and remove occlusions (such as players' hands) from our training dataset.
+
+% ============================================
+% 3. METHOD
+% ============================================
+\section{Method}
+\label{sec:method}
+
+\subsection{Data Generation and Preprocessing}
+\label{subsec:data_gen}
+A critical part of our approach was ensuring high-quality input data. We employed a three-stage pipeline:
+
+\subsubsection{Temporal Filtering with ffmpeg}
+The raw data consisted of video recordings (PGN-labeled games). Since chess positions remain static for multiple seconds, extracting every frame results in high redundancy. We used \textbf{ffmpeg} to detect identical consecutive frames and extract only unique stable frames, significantly reducing dataset size while maximizing diversity.
+
+\subsubsection{Occlusion Removal with SAM}
+Real-world chess videos often contain hand movements during piece manipulation. Training on occluded images introduces artifacts. We utilized \textbf{SAM} \cite{sam2023} to detect "person" or "hand" masks. Images containing significant occlusions were automatically discarded from the training set to ensure the model learns only clean board representations.
+
+\subsubsection{Enhanced Synthetic Data (Blender)}
+We utilized the provided Blender script but introduced several improvements to bridge the domain gap:
+\begin{itemize}
+    \item Randomized camera angles and focal lengths to match real-world variance.
+    \item Improved lighting conditions and shadows.
+    \item Color grading adjustments to better align with the specific color temperature of the real dataset.
+\end{itemize}
+
+\subsection{Model Architecture: BBDM with VQGAN}
+We selected the \textbf{Brownian Bridge Diffusion Model (BBDM)} \cite{bbdm2023} as our core architecture.
+\begin{itemize}
+    \item \textbf{Latent Space (VQGAN):} Instead of operating in pixel space, we use a VQGAN \cite{vqgan2021} to compress images into a discrete latent representation. This reduces computational complexity and focuses the diffusion process on semantic structure.
+    \item \textbf{Fine-Tuning Strategy:} We performed fine-tuning on two levels:
+    \begin{enumerate}
+        \item \textbf{VQGAN Fine-tuning:} Adapted the codebook to specifically capture chessboard textures and piece geometries.
+        \item \textbf{BBDM Fine-tuning:} Trained the diffusion bridge specifically on the mapping between our synthetic renders and the cleaned real dataset.
+    \end{enumerate}
+\end{itemize}
+
+\subsection{Loss Functions}
+\label{subsec:loss}
+To ensure both perceptual quality and structural fidelity, we optimized a composite loss function.
+\begin{equation}
+    \mathcal{L}_{total} = \lambda_{diff} \mathcal{L}_{diffusion} + \lambda_{perc} \mathcal{L}_{LPIPS} + \lambda_{struct} \mathcal{L}_{structure}
+\end{equation}
+We incorporated the LPIPS metric \cite{lpips2018} to improve perceptual similarity.
+
+% ============================================
+% 4. EXPERIMENTS
+% ============================================
+\section{Experiments}
+\label{sec:experiments}
+
+\subsection{Experimental Setup}
+\begin{itemize}
+    \item \textbf{Dataset:} [Number] pairs of Synthetic-Real images after filtering.
+    \item \textbf{Hardware:} Trained on [GPU Name, e.g., NVIDIA A100/T4].
+    \item \textbf{Hyperparameters:} Batch size: [X], Learning rate: [Y], Epochs: [Z].
+\end{itemize}
+
+\subsection{Qualitative Results}
+We present the progression of our model throughout the training process. Figure \ref{fig:epochs} demonstrates how the model gradually learns to synthesize realistic textures.
+
+\begin{figure}[ht]
+    \centering
+    \begin{tabular}{ccc}
+        \includegraphics[width=0.3\linewidth]{example-image-a} & \includegraphics[width=0.3\linewidth]{example-image-b} & \includegraphics[width=0.3\linewidth]{example-image-c} \\
+        (a) Synthetic Input & (b) Epoch 10 & (c) Epoch 50 \\
+        \includegraphics[width=0.3\linewidth]{example-image-a} & \includegraphics[width=0.3\linewidth]{example-image-b} & \includegraphics[width=0.3\linewidth]{example-image-c} \\
+        (d) Epoch 100 & (e) Final Output & (f) Real Reference
+    \end{tabular}
+    \caption{Training progression: Visualizing the domain translation at different epochs.}
+    \label{fig:epochs}
+\end{figure}
+
+\subsection{Quantitative Evaluation}
+\textit{TODO: Add your FID/LPIPS scores here.}
+
+% ============================================
+% 5. WHAT DID NOT WORK
+% ============================================
+\section{What Did Not Work}
+\label{sec:not_work}
+
+Prior to adopting BBDM, we experimented extensively with GAN-based approaches, specifically \textbf{CUT} \cite{cut2020}.
+
+\begin{itemize}
+    \item \textbf{Issue:} The GAN models struggled to maintain the precise geometry of chess pieces, often hallucinating pieces or distorting the board grid.
+    \item \textbf{Result:} As seen in Figure \ref{fig:gan_fail}, the outputs suffered from mode collapse and unrealistic artifacts.
+    \item \textbf{Conclusion:} This led us to switch to Diffusion Models, which offer more stable training and better structural preservation.
+\end{itemize}
+
+\begin{figure}[ht]
+    \centering
+    % \includegraphics[width=0.5\linewidth]{path_to_failed_gan_image.png}
+    \fbox{\parbox{6cm}{\centering \vspace{1cm} Placeholder for Failed GAN Result \vspace{1cm}}}
+    \caption{Example of failed translation using CUT/GAN.}
+    \label{fig:gan_fail}
+\end{figure}
+
+% ============================================
+% 6. ABLATION STUDY
+% ============================================
+\section{Ablation Study}
+\label{sec:ablation}
+
+To validate our pipeline components, we analyzed the impact of:
+\begin{enumerate}
+    \item \textbf{w/o SAM Filtering:} Training on raw data (including hands) resulted in the model generating ghostly artifacts over the board.
+    \item \textbf{w/o VQGAN Fine-tuning:} Using a generic pre-trained VQGAN resulted in blurry piece edges.
+\end{enumerate}
+
+\begin{table}[ht]
+\centering
+\caption{Ablation Study Results}
+\begin{tabular}{lc}
+\toprule
+\textbf{Configuration} & \textbf{Visual Observation} \\
+\midrule
+Full Pipeline (Ours) & Sharp, Realistic, Clean \\
+w/o SAM Filtering & Artifacts, Occlusions \\
+w/o VQGAN FT & Blurry Textures \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ============================================
+% 7. DISCUSSION & LIMITATIONS
+% ============================================
+\section{Discussion and Limitations}
+While our BBDM approach yields high-quality results, the inference time is slower compared to single-pass GANs due to the iterative diffusion process. Future work could explore distillation techniques to speed up sampling.
+
+% ============================================
+% 8. CONCLUSION
+% ============================================
+\section{Conclusion}
+We presented a robust Synthetic-to-Real translation pipeline for chessboard images. By combining careful data curation (SAM, ffmpeg) with advanced diffusion models (BBDM+VQGAN), we achieved significant improvements over traditional GAN baselines.
+
+% ============================================
+% REFERENCES
+% ============================================
+\begin{thebibliography}{99}
+
+% 1. CUT
+\bibitem{cut2020}
+Park, T., Efros, A. A., Zhang, R., \& Zhu, J. Y. (2020).
+\newblock Contrastive learning for unpaired image-to-image translation.
+\newblock In \textit{European Conference on Computer Vision} (pp. 319-345). Springer, Cham.
+
+% 2. BBDM
+\bibitem{bbdm2023}
+Li, B., Xue, K., Liu, B., \& Lai, Y. K. (2023).
+\newblock BBDM: Image-to-image Translation with Brownian Bridge Diffusion Models.
+\newblock In \textit{Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition} (pp. 1952-1961).
+
+% 3. CycleGAN
+\bibitem{cyclegan2017}
+Zhu, J. Y., Park, T., Isola, P., \& Efros, A. A. (2017).
+\newblock Unpaired image-to-image translation using cycle-consistent adversarial networks.
+\newblock In \textit{Proceedings of the IEEE international conference on computer vision} (pp. 2223-2232).
+
+% 4. VQGAN
+\bibitem{vqgan2021}
+Esser, P., Rombach, R., \& Ommer, B. (2021).
+\newblock Taming transformers for high-resolution image synthesis.
+\newblock In \textit{Proceedings of the IEEE/CVF conference on computer vision and pattern recognition} (pp. 12873-12883).
+
+% 5. SAM
+\bibitem{sam2023}
+Kirillov, A., Mintun, E., Ravi, N., Mao, H., Rolland, C., Gustafson, L., ... \& Girshick, R. (2023).
+\newblock Segment anything.
+\newblock \textit{arXiv preprint arXiv:2304.02643}.
+
+% --- SUGGESTED REFERENCES ---
+
+% LPIPS (Highly recommended as you mentioned loss functions)
+\bibitem{lpips2018}
+Zhang, R., Isola, P., Efros, A. A., Shechtman, E., \& Wang, O. (2018).
+\newblock The unreasonable effectiveness of deep features as a perceptual metric.
+\newblock In \textit{Proceedings of the IEEE conference on computer vision and pattern recognition} (pp. 586-595).
+
+% DDPM (Standard citation for diffusion background)
+\bibitem{ddpm2020}
+Ho, J., Jain, A., \& Abbeel, P. (2020).
+\newblock Denoising diffusion probabilistic models.
+\newblock \textit{Advances in Neural Information Processing Systems}, 33, 6840-6851.
+
+\end{thebibliography}
+
+\end{document}
