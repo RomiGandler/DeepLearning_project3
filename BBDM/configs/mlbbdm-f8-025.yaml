@@ -1,5 +1,5 @@
 # Latent Brownian Bridge Diffusion Model Template(Latent Space)
-runner: "MaskedBBDMRunner"
+runner: "BBDMRunner"
 training:
   n_epochs: 300
   n_steps: 200000
@@ -10,13 +10,13 @@ training:
 
 testing:
   clip_denoised: False
-  sample_num: 5
+  sample_num: 1
 
 data:
-  dataset_name: 'all_data_f8_maske_scale_075'
-  dataset_type: 'masked_aligned'
+  dataset_name: 'all_data_f8_maske_scale_025'
+  dataset_type: 'custom_aligned'
   dataset_config:
-    dataset_path: '/home/avinoamd/roni/BBDM/training_model_new'
+    dataset_path: '/home/avinoamd/roni/BBDM/data_10.01_no_hands'
     image_size: 256
     channels: 3
     to_normal: True
@@ -32,8 +32,8 @@ data:
     # shuffle: False
 
 model:
-  model_name: "LBBDM-f8" # part of result path
-  model_type: "MaskedLBBDM" # specify a module
+  model_name: "MLBBDM-f8-scale_025" # part of result path
+  model_type: "LBBDM" # specify a module
   latent_before_quant_conv: False
   normalize_latent: False
   only_load_latent_mean_std: False

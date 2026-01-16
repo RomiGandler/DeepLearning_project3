@@ -9,7 +9,7 @@ from pathlib import Path
 import sys
 
 # 1. Setup paths
-BASE_IMAGE_DIR = "/home/avinoamd/roni/BBDM/training_model_new"
+BASE_IMAGE_DIR = "/home/avinoamd/roni/BBDM/data_10.01_no_hands"
 
 # 2. Initialize the Predictor
 PROMPTS = ["chess piece", "hand"]

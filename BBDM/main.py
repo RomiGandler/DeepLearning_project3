@@ -36,12 +36,13 @@ def parse_args_and_config():
 
     #################################### avinoam patch ##############
     import os
-    args.config = os.path.join(os.getcwd(), "configs", "Template-LBBDM-f4.yaml")
-    args.train = True
-    args.sample_at_start = True
-    args.save_top = True
+    args.config = os.path.join(os.getcwd(), "configs", "mlbbdm-f8-075.yaml")
+    args.train = False #True
+    args.sample_to_eval = True #True
+    # args.sample_at_start = True
+    # args.save_top = True
     args.gpu_ids = '0'
-    args.resume_model = os.path.join(os.getcwd(), 'results/all_data_f4/LBBDM-f4/checkpoint/last_model.pth')
+    args.resume_model = os.path.join(os.getcwd(), 'results/all_data_f8_maske_scale_075/MLBBDM-f8-scale_075/checkpoint/last_model.pth')
     args.resume_optim = os.path.join(os.getcwd(), 'results/all_data_f4/LBBDM-f4/checkpoint/last_optim_sche.pth')
     #################################### avinoam patch ##############
     with open(args.config, 'r') as f:

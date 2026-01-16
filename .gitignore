@@ -62,26 +62,9 @@ BBDM/data_10.01_no_hands/
 chess_data/
 
 # Training outputs and checkpoints
+BBDM/results/
 BBDM/outputs/
 BBDM/training_model_new/
-
-# BBDM Results: Ignore all except specific tracked checkpoints
-BBDM/results/*
-
-# Allow traversing to VQGAN checkpoint
-!BBDM/results/VQGAN/
-BBDM/results/VQGAN/*
-!BBDM/results/VQGAN/last.ckpt
-
-# Allow traversing to LBBDM checkpoints
-!BBDM/results/all_data_f4/
-BBDM/results/all_data_f4/*
-!BBDM/results/all_data_f4/LBBDM-f4/
-BBDM/results/all_data_f4/LBBDM-f4/*
-!BBDM/results/all_data_f4/LBBDM-f4/checkpoint/
-BBDM/results/all_data_f4/LBBDM-f4/checkpoint/*
-!BBDM/results/all_data_f4/LBBDM-f4/checkpoint/last_model.pth
-!BBDM/results/all_data_f4/LBBDM-f4/checkpoint/last_optim_sche.pth
 
 # SAM model and runs
 BBDM/SAM/runs/

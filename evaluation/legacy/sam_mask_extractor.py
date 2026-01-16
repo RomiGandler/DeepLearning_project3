@@ -4,11 +4,10 @@ Module: SAM-based mask extraction (Evaluation Mode).
 Extracts chess piece masks using SAM for validation.
 """
 
-import os
 import numpy as np
 import cv2
 import torch
-from typing import Tuple, Optional
+from typing import Tuple
 
 # SAM imports
 try:
@@ -67,67 +66,56 @@ class SAMMaskExtractor:
     
     def extract_masks(
         self, 
-        image_path: str,
-        prompts: Optional[list] = None
+        image: np.ndarray,
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
-        Extract white and black piece masks from an image.
-        Returns numpy boolean arrays.
+        Extract white and black piece masks from an image using a two-step process:
+        1. Detect ALL chess pieces using a generic prompt.
+        2. Classify each piece as white/black based on pixel intensity.
+        
+        Args:
+            image: BGR image as numpy array (from cv2.imread)
         """
-        if not self.is_available():
-            raise RuntimeError("SAM predictor not initialized")
+        assert self.is_available(), "SAM predictor not initialized"
+        assert image is not None, "Image is None"
         
-        if prompts is None:
-            prompts = self.DEFAULT_PROMPTS
+        detection_prompts = ["chess piece"]
         
-        try:
-            self.predictor.set_image(image_path)
-            results = self.predictor(text=prompts)
-        except Exception as e:
-            raise RuntimeError(f"Error processing image {image_path}: {e}")
+        self.predictor.set_image(image)
+        results = self.predictor(text=detection_prompts)
         
+        h, w = image.shape[:2]
+        
+        mask_white = np.zeros((h, w), dtype=bool)
+        mask_black = np.zeros((h, w), dtype=bool)
+
         if not results:
-            img = cv2.imread(image_path)
-            if img is None:
-                raise RuntimeError(f"Could not read image: {image_path}")
-            h, w = img.shape[:2]
-            return np.zeros((h, w), dtype=bool), np.zeros((h, w), dtype=bool)
+            return mask_white, mask_black
         
         result = results[0]
         
         if result.masks is not None:
-            h, w = result.masks.data.shape[1:]
-        else:
-            h, w = result.orig_shape
-        
-        mask_white = np.zeros((h, w), dtype=bool)
-        mask_black = np.zeros((h, w), dtype=bool)
-        
-        if result.masks is not None:
-            classes = result.boxes.cls.cpu().numpy().astype(int)
             masks = result.masks.data.cpu().numpy().astype(bool)
             
-            for i, cls_id in enumerate(classes):
-                if cls_id == 0:
-                    mask_white = np.logical_or(mask_white, masks[i])
-                elif cls_id == 1:
-                    mask_black = np.logical_or(mask_black, masks[i])
+            # Convert image to grayscale for intensity check
+            gray_img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            
+            for i in range(len(masks)):
+                single_mask = masks[i]
+                
+                # Get pixels belonging to this mask
+                masked_pixels = gray_img[single_mask]
+                
+                if len(masked_pixels) == 0:
+                    continue
+                
+                # Calculate median brightness to be robust against highlights/shadows
+                avg_brightness = np.median(masked_pixels)
+                
+                # Threshold can be tuned. 110 is a good starting point.
+                if avg_brightness > 110: 
+                    mask_white = np.logical_or(mask_white, single_mask)
+                else:
+                    mask_black = np.logical_or(mask_black, single_mask)
         
         return mask_white, mask_black
-    
-    def save_debug_masks(
-        self,
-        mask_white: np.ndarray,
-        mask_black: np.ndarray,
-        output_dir: str,
-        file_id: str
-    ) -> None:
-        os.makedirs(output_dir, exist_ok=True)
-        cv2.imwrite(
-            os.path.join(output_dir, f"{file_id}_white_mask.png"),
-            mask_white.astype(np.uint8) * 255
-        )
-        cv2.imwrite(
-            os.path.join(output_dir, f"{file_id}_black_mask.png"),
-            mask_black.astype(np.uint8) * 255
-        )

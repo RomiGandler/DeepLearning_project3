@@ -1,10 +1,11 @@
 """
 Module: Mask to 2-channel 8x8 grid conversion (Evaluation Mode).
 
-Converts segmentation masks to hard board representation using thresholding.
+Converts segmentation masks to hard board representation using coverage thresholding.
 """
 
 import numpy as np
+import cv2
 
 BOARD_SIZE = 8
 
@@ -12,7 +13,8 @@ def masks_to_hard_grid(
     mask_white: np.ndarray,
     mask_black: np.ndarray,
     threshold: float = 0.20,
-    board_size: int = BOARD_SIZE
+    board_size: int = BOARD_SIZE,
+    debug_path: str = None
 ) -> np.ndarray:
     """
     Convert boolean/float masks to (2, 8, 8) grid using coverage thresholding.
@@ -22,6 +24,7 @@ def masks_to_hard_grid(
         mask_black: (H, W) boolean or float array
         threshold: Coverage threshold to consider a cell occupied
         board_size: Size of the board grid
+        debug_path: Optional path to save a debug visualization image
     
     Returns:
         (2, 8, 8) numpy array with binary values (0.0 or 1.0)
@@ -31,6 +34,18 @@ def masks_to_hard_grid(
     cell_w = w / board_size
     
     grid = np.zeros((2, board_size, board_size), dtype=np.float32)
+
+    # Prepare debug image if requested
+    debug_img = None
+    if debug_path:
+        # RGB image: Red=White, Blue=Black (BGR: Red is (0,0,255), Blue is (255,0,0))
+        debug_img = np.zeros((h, w, 3), dtype=np.uint8)
+        # Assuming masks are 0 or 1/True
+        debug_img[mask_white > 0] = [0, 0, 255] # Red
+        debug_img[mask_black > 0] = [255, 0, 0] # Blue
+        # Purple for overlap
+        overlap = (mask_white > 0) & (mask_black > 0)
+        debug_img[overlap] = [255, 0, 255]
     
     for r in range(board_size):
         for c in range(board_size):
@@ -56,6 +71,32 @@ def masks_to_hard_grid(
                 grid[0, r, c] = 1.0
             elif black_coverage > threshold and black_coverage > white_coverage:
                 grid[1, r, c] = 1.0
+
+            # Debug Visualization Overlay
+            if debug_path:
+                # Draw grid lines (Green)
+                cv2.rectangle(debug_img, (x_start, y_start), (x_end, y_end), (0, 255, 0), 1)
+                
+                # If significant coverage, write the % in the cell
+                if white_coverage > 0.05 or black_coverage > 0.05:
+                    text_x = x_start + 2
+                    text_y = y_start + 12
+                    
+                    if white_coverage > 0.05:
+                        label_w = f"W:{white_coverage:.2f}"
+                        # White label in Cyan/Whiteish
+                        cv2.putText(debug_img, label_w, (text_x, text_y), 
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.35, (255, 255, 255), 1)
+                        text_y += 12
+                        
+                    if black_coverage > 0.05:
+                        label_b = f"B:{black_coverage:.2f}"
+                        # Black label in Yellow
+                        cv2.putText(debug_img, label_b, (text_x, text_y), 
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 255, 255), 1)
+
+    if debug_path and debug_img is not None:
+        cv2.imwrite(debug_path, debug_img)
     
     return grid
 
