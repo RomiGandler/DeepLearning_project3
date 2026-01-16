@@ -78,3 +78,46 @@ def compute_per_channel_accuracy(
         black_acc = black_correct.mean().item()
     
     return white_acc, black_acc
+
+def compute_f1_metrics(
+    pred_grid: torch.Tensor,
+    gt_grid: torch.Tensor,
+    threshold: float = 0.5,
+    epsilon: float = 1e-7
+) -> dict:
+    """
+    Compute Precision, Recall, and F1 Score for White and Black channels.
+    """
+    with torch.no_grad():
+        if pred_grid.dim() == 3:
+            pred_grid = pred_grid.unsqueeze(0)
+        if gt_grid.dim() == 3:
+            gt_grid = gt_grid.unsqueeze(0)
+        
+        pred_hard = (pred_grid > threshold).float()
+        
+        metrics = {}
+        channels = ['white', 'black']
+        
+        for i, color in enumerate(channels):
+            # True Positives: Predicted 1 AND Actual 1
+            tp = ((pred_hard[:, i] == 1) & (gt_grid[:, i] == 1)).float().sum()
+            
+            # False Positives: Predicted 1 but Actual 0 (Hallucination)
+            fp = ((pred_hard[:, i] == 1) & (gt_grid[:, i] == 0)).float().sum()
+            
+            # False Negatives: Predicted 0 but Actual 1 (Missed Piece)
+            fn = ((pred_hard[:, i] == 0) & (gt_grid[:, i] == 1)).float().sum()
+            
+            precision = tp / (tp + fp + epsilon)
+            recall = tp / (tp + fn + epsilon)
+            f1 = 2 * (precision * recall) / (precision + recall + epsilon)
+            
+            metrics[f'{color}_precision'] = precision.item()
+            metrics[f'{color}_recall'] = recall.item()
+            metrics[f'{color}_f1'] = f1.item()
+            
+        # Average F1
+        metrics['avg_f1'] = (metrics['white_f1'] + metrics['black_f1']) / 2
+        
+        return metrics
