@@ -5,6 +5,14 @@ import numpy as np
 import torch
 from torchvision import transforms
 from PIL import Image
+from scripts.crop_board import process_single_image
+import sys
+import yaml
+
+# Add BBDM to Python path
+sys.path.insert(0, "BBDM")
+from BBDM.utils import dict2namespace
+from BBDM.model.BrownianBridge.LatentBrownianBridgeModel import LatentBrownianBridgeModel
 
 # ==========================================
 # Paths and Model Setup (According to the computer environment)
@@ -15,6 +23,45 @@ SCRIPT_FILE = "blender/generate_synthtic_from_fen.py" # The script we wrote earl
 
 # Device setup (GPU if available, otherwise CPU)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# ==========================================
+# Model Loading
+# ==========================================
+def load_bbdm_model():
+    """Load the trained LBBDM model for inference."""
+    
+    # Paths to your trained model
+    config_path = "results/all_data_f4/LBBDM-f4/checkpoint/config.yaml"
+    model_checkpoint = "results/all_data_f4/LBBDM-f4/checkpoint/last_model.pth"
+    # Alternative: use best model instead
+    # model_checkpoint = "results/all_data_f4/LBBDM-f4/checkpoint/top_model_epoch_84.pth"
+    
+    print(f"🔧 Loading LBBDM model from {model_checkpoint}...")
+    
+    # Load config
+    with open(config_path, 'r') as f:
+        config_dict = yaml.load(f, Loader=yaml.FullLoader)
+    
+    config = dict2namespace(config_dict)
+    
+    # Update paths to be relative to current directory
+    config.model.VQGAN.params.ckpt_path = "results/VQGAN/last.ckpt"
+    
+    # Initialize model
+    model = LatentBrownianBridgeModel(config.model).to(device)
+    
+    # Load trained weights
+    checkpoint = torch.load(model_checkpoint, map_location=device)
+    model.load_state_dict(checkpoint['model'])
+    
+    # Set to evaluation mode
+    model.eval()
+    
+    print("✅ Model loaded successfully!")
+    return model, config
+
+# Load model once at startup
+bbdm_model, bbdm_config = load_bbdm_model()
 
 # ==========================================
 # Loading Your Model (BBDM)
@@ -69,6 +116,14 @@ def generate_chessboard_image(fen: str, viewpoint: str) -> None:
         return
 
     # ======================================================
+    # Step 1.5: Crop the Synthetic Image to Board Area Only
+    # ======================================================
+    print("✂️  Cropping synthetic image to chessboard area...")
+    
+    # Use the existing crop function (overwrites the original by default)
+    process_single_image(path_synthetic, output_dir=None, preview_mode=False)
+
+    # ======================================================
     # Step 2: Generate Realistic Image (Using Your Model) [cite: 443]
     # ======================================================
     print("🤖 Generating Realistic Image using Neural Network...")
@@ -76,8 +131,7 @@ def generate_chessboard_image(fen: str, viewpoint: str) -> None:
     # Load the synthetic image
     syn_image = Image.open(path_synthetic).convert('RGB')
 
-    # Pre-processing - Must match what you did during training!
-    # Common example for CycleGAN:
+    # Pre-processing 
     transform = transforms.Compose([
         transforms.Resize((256, 256)), # or the size your model expects
         transforms.ToTensor(),
@@ -88,11 +142,14 @@ def generate_chessboard_image(fen: str, viewpoint: str) -> None:
 
     # Run the model (Inference)
     with torch.no_grad():
-        # === Critical Line: Here your model generates the image ===
-        # fake_image_tensor = netG(input_tensor)
-
-        # --- For now (until you connect the model): We'll use the synthetic image as a dummy ---
-        fake_image_tensor = input_tensor 
+        # === Use your trained BBDM model ===
+        # The model expects input in range [-1, 1] which we already have
+        # bbdm_model.sample() takes the synthetic image and returns realistic version
+        fake_image_tensor = bbdm_model.sample(
+            input_tensor, 
+            clip_denoised=bbdm_config.testing.clip_denoised,
+            sample_mid_step=False
+        )
         # =================================================================
 
     # Post-processing
@@ -105,6 +162,22 @@ def generate_chessboard_image(fen: str, viewpoint: str) -> None:
     orig_w, orig_h = syn_image.size
     real_img_pil = Image.fromarray(fake_image).resize((orig_w, orig_h))
     real_img_pil.save(path_realistic)
+
+    # ======================================================
+    # Step 2.5: Rotate Realistic Image if Viewpoint is Black
+    # ======================================================
+    if viewpoint == 'black':
+        print("🔄 Rotating realistic image 180 degrees (black viewpoint)...")
+        
+        # Load the realistic image
+        img_to_rotate = cv2.imread(path_realistic)
+        
+        # Rotate 180 degrees
+        rotated_img = cv2.rotate(img_to_rotate, cv2.ROTATE_180)
+        
+        # Save back to path_realistic (replacing the unrotated version)
+        cv2.imwrite(path_realistic, rotated_img)
+        print("✅ Realistic image rotated and saved.")
 
     # ======================================================
     # Step 3: Create Comparison Image (Side-by-Side) [cite: 444]
