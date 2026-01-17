@@ -38,11 +38,9 @@ def load_bbdm_model():
     
     print(f"🔧 Loading LBBDM model from {model_checkpoint}...")
     
-    # Load config
+    # Load config (UnsafeLoader returns Namespace directly, no conversion needed)
     with open(config_path, 'r') as f:
-        config_dict = yaml.load(f, Loader=yaml.FullLoader)
-    
-    config = dict2namespace(config_dict)
+        config = yaml.load(f, Loader=yaml.UnsafeLoader)
     
     # Update paths to be relative to current directory
     config.model.VQGAN.params.ckpt_path = "results/VQGAN/last.ckpt"
@@ -88,8 +86,8 @@ def generate_chessboard_image(fen: str, viewpoint: str) -> None:
     # ======================================================
     # Step 1: Generate Synthetic Image (Using Blender) [cite: 441]
     # ======================================================
-    # We call the Blender script we created as a subprocess
-    # Mapping: viewpoint='white' -> side='white', viewpoint='black' -> side='black'
+    # Blender always generates from white's perspective
+    # We'll rotate 180° later if viewpoint is black
 
     print(f"🎨 Generating Synthetic Image for Viewpoint: {viewpoint}...")
     
@@ -101,7 +99,6 @@ def generate_chessboard_image(fen: str, viewpoint: str) -> None:
         "--fen", fen,
         "--output_dir", results_dir,
         "--output_name", "synthetic",  # Blender will add .png automatically
-        "--side", viewpoint # Here we pass the viewpoint [cite: 439, 445]
     ]
     
     try:
@@ -118,10 +115,10 @@ def generate_chessboard_image(fen: str, viewpoint: str) -> None:
     # ======================================================
     # Step 1.5: Crop the Synthetic Image to Board Area Only
     # ======================================================
-    print("✂️  Cropping synthetic image to chessboard area...")
+    # print("✂️  Cropping synthetic image to chessboard area...")
     
-    # Use the existing crop function (overwrites the original by default)
-    process_single_image(path_synthetic, output_dir=None, preview_mode=False)
+    # # Use the existing crop function (overwrites the original by default)
+    # process_single_image(path_synthetic, output_dir=None, preview_mode=False)
 
     # ======================================================
     # Step 2: Generate Realistic Image (Using Your Model) [cite: 443]
@@ -204,8 +201,8 @@ def generate_chessboard_image(fen: str, viewpoint: str) -> None:
 # ==========================================
 if __name__ == "__main__":
     # Example for Sicilian Opening from Black's Perspective
-    test_fen = "r1bqkbnr/pp1ppppp/2n5/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3"
-    test_view = "black" 
+    test_fen = "8/5k2/3p4/1p1Pp2p/pP2Pp1P/P4P1K/8/8 b - - 0 1"
+    test_view = "white" 
     
     try:
         generate_chessboard_image(test_fen, test_view)
