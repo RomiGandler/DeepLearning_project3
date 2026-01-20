@@ -115,10 +115,10 @@ def generate_chessboard_image(fen: str, viewpoint: str) -> None:
     # ======================================================
     # Step 1.5: Crop the Synthetic Image to Board Area Only
     # ======================================================
-    # print("✂️  Cropping synthetic image to chessboard area...")
+    print("✂️  Cropping synthetic image to chessboard area...")
     
-    # # Use the existing crop function (overwrites the original by default)
-    # process_single_image(path_synthetic, output_dir=None, preview_mode=False)
+    # Use the existing crop function (overwrites the original by default)
+    process_single_image(path_synthetic, output_dir=None, preview_mode=False)
 
     # ======================================================
     # Step 2: Generate Realistic Image (Using Your Model) [cite: 443]
@@ -161,19 +161,21 @@ def generate_chessboard_image(fen: str, viewpoint: str) -> None:
     real_img_pil.save(path_realistic)
 
     # ======================================================
-    # Step 2.5: Rotate Realistic Image if Viewpoint is Black
+    # Step 2.5: Rotate Images if Viewpoint is Black
     # ======================================================
     if viewpoint == 'black':
-        print("🔄 Rotating realistic image 180 degrees (black viewpoint)...")
+        print("🔄 Rotating images 180 degrees (black viewpoint)...")
         
-        # Load the realistic image
-        img_to_rotate = cv2.imread(path_realistic)
+        # Rotate the synthetic image
+        img_syn_to_rotate = cv2.imread(path_synthetic)
+        rotated_syn = cv2.rotate(img_syn_to_rotate, cv2.ROTATE_180)
+        cv2.imwrite(path_synthetic, rotated_syn)
+        print("✅ Synthetic image rotated and saved.")
         
-        # Rotate 180 degrees
-        rotated_img = cv2.rotate(img_to_rotate, cv2.ROTATE_180)
-        
-        # Save back to path_realistic (replacing the unrotated version)
-        cv2.imwrite(path_realistic, rotated_img)
+        # Rotate the realistic image
+        img_real_to_rotate = cv2.imread(path_realistic)
+        rotated_real = cv2.rotate(img_real_to_rotate, cv2.ROTATE_180)
+        cv2.imwrite(path_realistic, rotated_real)
         print("✅ Realistic image rotated and saved.")
 
     # ======================================================
