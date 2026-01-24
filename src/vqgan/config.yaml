@@ -1,0 +1,64 @@
+# VQGAN Configuration for Chess Dataset Finetuning
+# ================================================
+
+model:
+  base_learning_rate: 4.5e-6
+  params:
+    # Checkpoint name - downloads from HuggingFace if not found in checkpoints/
+    # Examples: "vqgan_f4.ckpt", "vqgan_f8.ckpt", or null for training from scratch
+    # Also supports full paths: "/path/to/model.ckpt"
+    ckpt: null  # e.g., "vqgan_f4.ckpt"
+    
+    # Codebook configuration
+    embed_dim: 3        # Embedding dimension (d=3 for f4 model)
+    n_embed: 8192       # Codebook size (Z=8192)
+    
+    # Encoder/Decoder architecture
+    ddconfig:
+      double_z: false
+      z_channels: 3     # Latent channels (d=3 for f4 model)
+      resolution: 256
+      in_channels: 3
+      out_ch: 3
+      ch: 128
+      ch_mult: [1, 2, 4]  # f4 architecture (256 -> 64 -> 32 -> 16 -> 64 latent)
+      num_res_blocks: 2
+      attn_resolutions: []
+      dropout: 0.0
+
+    # Loss configuration
+    lossconfig:
+      target: src.vqgan.model.modules.losses.vqperceptual.VQLPIPSWithDiscriminator
+      params:
+        disc_conditional: false
+        disc_in_channels: 3
+        disc_start: 10000       # Start discriminator training after this many steps
+        disc_weight: 0.8        # Discriminator loss weight
+        codebook_weight: 1.0    # Codebook/commitment loss weight
+        disc_num_layers: 3
+        perceptual_weight: 1.0  # LPIPS perceptual loss weight
+
+# Data configuration
+data:
+  params:
+    batch_size: 2
+    num_workers: 8
+    
+    train:
+      params:
+        size: 256
+        image_key: B    # 'A' for condition images, 'B' for target images, 'both' for all
+    
+    validation:
+      params:
+        size: 256
+        image_key: B
+
+# Training configuration (used by trainer.py CLI)
+training:
+  max_epochs: 100
+  gpus: 1
+  precision: 32
+  accumulate_grad_batches: 1
+  log_every_n_steps: 50
+  val_check_interval: 1.0
