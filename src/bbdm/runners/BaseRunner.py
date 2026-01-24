@@ -6,6 +6,7 @@ import time
 import yaml
 import os
 import traceback
+from pathlib import Path
 
 import torch
 import torch.distributed as dist
@@ -16,13 +17,14 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from abc import ABC, abstractmethod
 from tqdm.autonotebook import tqdm
 
-# from evaluation.FID import calc_FID
-# from evaluation.LPIPS import calc_LPIPS
+
 from src.bbdm.runners.base.EMA import EMA
 from src.bbdm.runners.utils import make_save_dirs, make_dir, get_dataset, remove_file
 
 
 class BaseRunner(ABC):
+    DEFAULT_BBDM_FILENAME = "bbdm_chess.pth"
+
     def __init__(self, config):
         self.net = None  # Neural Network
         self.optimizer = None  # optimizer
@@ -111,8 +113,15 @@ class BaseRunner(ABC):
         """
         Resolve BBDM checkpoint path, with optional auto-download from HuggingFace.
         
+        Supports multiple input formats:
+            - None: Train from scratch (no checkpoint loaded)
+            - "/full/path/to/file.pth": Use local file directly
+            - "bbdm_chess.pth": Download specific file by name from HuggingFace
+            - "auto": Download default BBDM checkpoint
+            - "auto:bbdm_f8_v2.pth": Download specific file by name
+        
         Args:
-            ckpt_path: Path to checkpoint, "auto" for auto-download, or None
+            ckpt_path: Path specification (see formats above)
             
         Returns:
             Resolved path or None if no checkpoint should be loaded
@@ -120,20 +129,36 @@ class BaseRunner(ABC):
         if ckpt_path is None:
             return None
         
-        # Special value "auto" triggers HuggingFace download
-        if ckpt_path == "auto":
-            self.logger("Auto-downloading BBDM checkpoint from HuggingFace...")
-            from src.data.hf_downloader import HFResourceManager
-            hf_manager = HFResourceManager()
-            return str(hf_manager.get_bbdm_checkpoint())
+        from src.data.hf_downloader import HFResourceManager
+        hf_manager = HFResourceManager()
+
+        # Handle "auto" or "auto:filename" format
+        if ckpt_path.startswith("auto"):
+            if ":" in ckpt_path:
+                # "auto:filename.ckpt" - download specific file
+                filename = ckpt_path.split(":", 1)[1]
+                print(f"Auto-downloading BBDM checkpoint '{filename}' from HuggingFace...")
+            else:
+                # "auto" - download default
+                filename = self.DEFAULT_BBDM_FILENAME
+                print(f"Auto-downloading default BBDM checkpoint from HuggingFace...")
+            
+            return str(hf_manager.get_model_checkpoint(filename=filename))
         
-        # Check if path exists
-        if os.path.exists(ckpt_path):
-            return ckpt_path
+        # Check if it's a full path that exists
+        path = Path(ckpt_path)
+        if path.exists():
+            print(f"Using local BBDM checkpoint: {path}")
+            return str(path)
         
-        # Path doesn't exist - warn and return None (train from scratch)
-        self.logger(f"Warning: BBDM checkpoint not found at {ckpt_path}. Training from scratch.")
-        return None
+        # Check if it's just a filename (no path separators) - try to download
+        if '/' not in ckpt_path and '\\' not in ckpt_path:
+            print(f"BBDM checkpoint '{ckpt_path}' not found locally, downloading from HuggingFace...")
+            return str(hf_manager.get_model_checkpoint(filename=ckpt_path))
+        
+        # Full path that doesn't exist - warn and download default
+        print(f"Warning: BBDM checkpoint not found at {ckpt_path}, downloading default...")
+        return str(hf_manager.get_model_checkpoint(filename=self.DEFAULT_BBDM_FILENAME))
     
     # load model, EMA, optimizer, scheduler from checkpoint
     def load_model_from_checkpoint(self):
