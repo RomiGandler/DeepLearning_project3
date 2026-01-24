@@ -1,7 +1,10 @@
-# Masked BBDM Configuration for Chess Dataset
-# 
-# This config uses mask-weighted loss for focused training on specific regions.
-# 
+# Masked BBDM Configuration (f8 architecture)
+# =============================================
+# Uses mask-weighted loss for focused training on specific regions.
+# Uses f8 architecture by default.
+#
+# For non-masked training, use example_config.yaml or f8_config.yaml instead.
+#
 # Usage:
 #   python -m src.bbdm.main -c src/bbdm/configs/masked_config.yaml -t  # Train
 #   python -m src.bbdm.main -c src/bbdm/configs/masked_config.yaml --sample_to_eval  # Evaluate
@@ -25,8 +28,11 @@ data:
   # MUST use 'masked_aligned' with MaskedBBDMRunner
   dataset_type: 'masked_aligned'
   dataset_config:
-    # Set to null to auto-download from HuggingFace, or provide local path
-    # Expected directory structure:
+    # Dataset path options:
+    #   - null: Auto-download from HuggingFace (recommended for first run)
+    #   - "/path/to/dataset": Use local dataset directory
+    #
+    # Expected directory structure (masks/ required for masked training):
     #   dataset_path/
     #   ├── train/
     #   │   ├── A/          # Condition images (input)
@@ -54,9 +60,12 @@ model:
   latent_before_quant_conv: False
   normalize_latent: False
   only_load_latent_mean_std: False
+  
   # BBDM Checkpoint Options:
   #   - null: Train from scratch (default)
-  #   - "auto": Auto-download pre-trained BBDM from HuggingFace
+  #   - "auto": Download default BBDM checkpoint from HuggingFace
+  #   - "auto:bbdm_masked_f8.pth": Download specific checkpoint by name
+  #   - "bbdm_masked.pth": Download by filename (short form)
   #   - "/path/to/checkpoint.pth": Load from local file
   # model_load_path: null
   # optim_sche_load_path: null
@@ -75,7 +84,8 @@ model:
   VQGAN:
     params:
       # VQGAN Checkpoint Options:
-      #   - null: Auto-download from HuggingFace (recommended)
+      #   - null: Download default VQGAN (vqgan_f8.ckpt) from HuggingFace
+      #   - "vqgan_f8.ckpt": Download specific VQGAN by name
       #   - "/path/to/vqgan.ckpt": Load from local file
       ckpt_path: null
       embed_dim: 4
@@ -117,9 +127,10 @@ model:
       mt_type: 'linear'
       objective: 'grad'
       loss_type: 'l1'
+      
       # Masked loss scale: balance between regular loss and masked loss
       # loss = (1 - scale) * regular_loss + scale * masked_loss
-      # Higher values focus more on masked regions
+      # Higher values focus more on masked regions (0.0 = ignore masks, 1.0 = only masked regions)
       masked_loss_scale: 0.75
 
       skip_sample: True

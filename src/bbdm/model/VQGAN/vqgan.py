@@ -73,27 +73,21 @@ class VQModel(nn.Module):
         """
         Resolve checkpoint path, downloading from HuggingFace if needed.
         
+        Supports multiple input formats:
+            - None: Download default VQGAN checkpoint
+            - "/full/path/to/file.ckpt": Use local file directly
+            - "vqgan_f8.ckpt": Download specific file by name from HuggingFace
+            - "auto": Download default checkpoint (same as None)
+            - "auto:vqgan_f4.ckpt": Download specific file by name
+        
         Args:
-            ckpt_path: Path to checkpoint file, or None to auto-download
+            ckpt_path: Path specification (see formats above)
             
         Returns:
             Resolved path to checkpoint file
         """
-        # If path provided and exists, use it directly
-        if ckpt_path is not None:
-            path = Path(ckpt_path)
-            if path.exists():
-                return str(path)
-            else:
-                print(f"VQGAN checkpoint not found at {ckpt_path}, downloading from HuggingFace...")
-        else:
-            print("No VQGAN checkpoint path provided, downloading from HuggingFace...")
-        
-        # Download from HuggingFace
         from src.data.hf_downloader import HFResourceManager
-        hf_manager = HFResourceManager()
-        downloaded_path = hf_manager.get_vqgan_checkpoint()
-        return str(downloaded_path)
+        return HFResourceManager.resolve_checkpoint_path(ckpt_path, checkpoint_type="vqgan")
     
     def init_from_ckpt(self, path, ignore_keys=None):
         """Load weights from checkpoint."""

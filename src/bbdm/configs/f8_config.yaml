@@ -1,14 +1,11 @@
-# BBDM Example Configuration
-# ===========================
-# This is an example config for standard BBDM training (no masks).
-# Uses f8 architecture by default.
-#
-# For masked training, use masked_f8_config.yaml instead.
-# For different latent sizes, use f4_config.yaml, f8_config.yaml, or f16_config.yaml.
+# BBDM f8 Configuration (256 -> 32 latent)
+# ==========================================
+# Uses VQGAN with f8 architecture (downsampling factor of 8)
+# Latent size: 256/8 = 32x32, z_channels: 4
 #
 # Usage:
-#   python -m src.bbdm.main -c src/bbdm/configs/example_config.yaml -t  # Train
-#   python -m src.bbdm.main -c src/bbdm/configs/example_config.yaml --sample_to_eval  # Evaluate
+#   python -m src.bbdm.main -c src/bbdm/configs/f8_config.yaml -t  # Train
+#   python -m src.bbdm.main -c src/bbdm/configs/f8_config.yaml --sample_to_eval  # Evaluate
 
 runner: "BBDMRunner"
 
@@ -25,23 +22,10 @@ testing:
   sample_num: 1
 
 data:
-  dataset_name: 'chess_bbdm'
-  # Dataset type options:
-  #   - 'custom_aligned': Use with BBDMRunner (no masks, 2-tuple batch)
-  #   - 'masked_aligned': Use with MaskedBBDMRunner (requires masks/ folder, 3-tuple batch)
+  dataset_name: 'chess_bbdm_f8'
   dataset_type: 'custom_aligned'
   dataset_config:
-    # Dataset path options:
-    #   - null: Auto-download from HuggingFace (recommended for first run)
-    #   - "/path/to/dataset": Use local dataset directory
-    #
-    # Expected directory structure:
-    #   dataset_path/
-    #   ├── train/
-    #   │   ├── A/          # Condition images (input)
-    #   │   └── B/          # Target images (ground truth)
-    #   ├── val/
-    #   └── test/
+    # Set to null to auto-download from HuggingFace, or provide local path
     dataset_path: null
     image_size: 256
     channels: 3
@@ -57,7 +41,7 @@ data:
     batch_size: 8
 
 model:
-  model_name: "LBBDM-chess"
+  model_name: "LBBDM-f8"
   model_type: "LBBDM"
   latent_before_quant_conv: False
   normalize_latent: False
@@ -67,7 +51,7 @@ model:
   #   - null: Train from scratch (default)
   #   - "auto": Download default BBDM checkpoint from HuggingFace
   #   - "auto:bbdm_f8.pth": Download specific checkpoint by name
-  #   - "bbdm_chess.pth": Download by filename (short form)
+  #   - "bbdm_f8.pth": Download by filename (short form)
   #   - "/path/to/checkpoint.pth": Load from local file
   # model_load_path: null
   # optim_sche_load_path: null
@@ -86,10 +70,10 @@ model:
   VQGAN:
     params:
       # VQGAN Checkpoint Options:
-      #   - null: Download default VQGAN (vqgan_f8.ckpt) from HuggingFace
+      #   - null: Download default VQGAN from HuggingFace
       #   - "vqgan_f8.ckpt": Download specific VQGAN by name
       #   - "/path/to/vqgan.ckpt": Load from local file
-      ckpt_path: null
+      ckpt_path: "vqgan_f8.ckpt"
       embed_dim: 4
       n_embed: 16384
       ddconfig:
@@ -139,7 +123,7 @@ model:
       max_var: 1.0
 
       UNetParams:
-        image_size: 32
+        image_size: 32  # 256/8 = 32 latent size
         in_channels: 4
         model_channels: 128
         out_channels: 4
