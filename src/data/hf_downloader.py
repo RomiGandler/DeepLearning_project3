@@ -24,7 +24,7 @@ class HFResourceManager:
             token: HuggingFace token for private repos (or set HF_TOKEN env var)
         """
         if local_cache_dir is None:
-            local_cache_dir = os.path.join(os.path.dirname(__file__), "hf_cache")
+            local_cache_dir = os.path.dirname(__file__)
         
         self.local_cache_dir = Path(local_cache_dir)
         self.token = token
@@ -105,7 +105,7 @@ class HFResourceManager:
         downloaded_path = hf_hub_download(
             repo_id=self.MODEL_REPO_ID,
             filename=filename,
-            repo_type="dataset", # Models are stored in a dataset repo in this setup
+            repo_type="model",
             local_dir=str(local_dir),
             token=self.token,
         )
