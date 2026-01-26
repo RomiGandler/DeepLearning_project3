@@ -120,3 +120,21 @@ class VQGANChessVal(VQGANChessDataset):
             image_key=image_key,
             random_crop=False,
         )
+
+
+class VQGANChessTest(VQGANChessDataset):
+    """Test dataset for VQGAN."""
+    
+    def __init__(
+        self,
+        size: int,
+        dataset_path: str = None,
+        image_key: str = 'B',
+    ):
+        super().__init__(
+            size=size,
+            dataset_path=dataset_path,
+            stage='test',
+            image_key=image_key,
+            random_crop=False,
+        )
