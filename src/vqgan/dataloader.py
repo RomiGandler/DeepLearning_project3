@@ -86,6 +86,7 @@ class VQGANChessDataset(BaseChessDataset):
         }
 
 
+
 class VQGANChessTrain(VQGANChessDataset):
     """Training dataset for VQGAN (matches taming-transformers interface)."""
     

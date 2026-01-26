@@ -44,10 +44,10 @@ def parse_args():
         help="Dataset path (overrides config). If not provided, downloads from HuggingFace."
     )
     parser.add_argument(
-        "-r", "--resume",
+        "-m", "--model",
         type=str,
         default=None,
-        help="Path to checkpoint to resume training from (or for testing)"
+        help="Path to checkpoint to train and test"
     )
     parser.add_argument(
         "-o", "--output",
@@ -112,8 +112,8 @@ def main():
     args = parse_args()
     
     # Validate arguments
-    if args.test_only and args.resume is None:
-        print("Warning: --test-only requires --resume to specify the checkpoint to test.")
+    if args.test_only and args.model is None:
+        print("Warning: --test-only requires --model to specify the model to test.")
         print("Will attempt to use checkpoint from config if specified.")
     
     # Set seed for reproducibility
@@ -123,7 +123,7 @@ def main():
     trainer = VQGANTrainer(
         config_path=args.config,
         dataset_path=args.dataset,
-        checkpoint_path=args.resume,
+        checkpoint_path=args.model,
         output_dir=args.output,
     )
     
