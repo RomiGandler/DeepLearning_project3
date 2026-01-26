@@ -47,12 +47,17 @@ data:
     train:
       params:
         size: 256
-        image_key: B    # 'A' for condition images, 'B' for target images, 'both' for all
+        image_key: both    # 'A' for condition images, 'B' for target images, 'both' for all
     
     validation:
       params:
         size: 256
-        image_key: B
+        image_key: both
+    
+    test:
+      params:
+        size: 256
+        image_key: both
 
 # Training configuration (used by trainer.py CLI)
 training:
