@@ -26,6 +26,7 @@ from typing import Optional, Dict, List
 from src.evaluation.chess_eval_dataset import ChessEvalDataset
 from src.evaluation.data_saver import DataSaver
 from src.evaluation.grid_extractors.sam_grid_extractor_with_centroids import SAMGridExtractor
+from src.evaluation.grid_extractors.interface import GridExtractor
 from src.evaluation.fen_to_grid import fen_to_two_channel_grid_numpy
 from src.evaluation.board_metrics import (
     compute_board_accuracy,
@@ -53,7 +54,7 @@ def evaluate_single(
     image: np.ndarray,
     fen: str,
     file_id: str,
-    extractor: SAMGridExtractor,
+    extractor: GridExtractor,
     saver: Optional[DataSaver] = None,
 ) -> Dict:
     """
@@ -91,7 +92,7 @@ def evaluate_batch(
     images: List[np.ndarray],
     fens: List[str],
     file_ids: List[str],
-    extractor: SAMGridExtractor,
+    extractor: GridExtractor,
     saver: Optional[DataSaver] = None,
 ) -> List[Dict]:
     """
@@ -126,11 +127,13 @@ def evaluate_folder(
     generated_dir: Optional[str] = None,
     output_dir: Optional[str] = None,
     gt_images_dir: Optional[str] = None,
-    model_path: str = "sam3.pt",
     save_debug: bool = True,
 ) -> Dict:
     """
     Evaluate all images using ChessEvalDataset.
+    
+    The SAM model (sam3.pt) is automatically downloaded from HuggingFace
+    if not found in the local checkpoints directory.
     
     Args:
         dataset_path: Root dataset path. If None, downloads from HuggingFace.
@@ -138,9 +141,7 @@ def evaluate_folder(
         generated_dir: Model output directory. If None, evaluates original B/ images.
         output_dir: Output directory for results
         gt_images_dir: Optional directory with ground truth images for comparison
-        model_path: Path to SAM model
         save_debug: Whether to save debug outputs
-        extractor_type: "centroid" - method for grid cell assignment
         
     Returns:
         Summary dict with aggregated metrics
@@ -156,8 +157,8 @@ def evaluate_folder(
         generated_dir=generated_dir,
     )
     
-
-    extractor = SAMGridExtractor(model_path=model_path)
+    # Create extractor (auto-downloads SAM model from HuggingFace if needed)
+    extractor = SAMGridExtractor()
     
     # Setup saver
     saver = None
@@ -222,8 +223,6 @@ def main():
                         help="Output directory for results")
     parser.add_argument("--gt_images_dir", type=str, default=None,
                         help="Optional directory with ground truth images for comparison")
-    parser.add_argument("--model_path", type=str, default="sam3.pt",
-                        help="Path to SAM model")
     parser.add_argument("--no_debug", action="store_true",
                         help="Disable debug output saving")
     
@@ -235,7 +234,6 @@ def main():
         generated_dir=args.generated_dir,
         output_dir=args.output_dir,
         gt_images_dir=args.gt_images_dir,
-        model_path=args.model_path,
         save_debug=not args.no_debug,
     )
 

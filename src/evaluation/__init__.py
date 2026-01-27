@@ -22,10 +22,17 @@ from src.evaluation.evaluate_model import (
     evaluate_batch,
     evaluate_folder,
 )
+from src.evaluation.model_loader import (
+    SAMCheckpointLoader,
+    get_sam_checkpoint,
+)
 
 __all__ = [
     # Dataset
     "ChessEvalDataset",
+    # Model loading
+    "SAMCheckpointLoader",
+    "get_sam_checkpoint",
     # Metrics
     "compute_board_accuracy",
     "compute_cell_level_accuracy", 
