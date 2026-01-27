@@ -149,3 +149,7 @@ class ImageLogger(Callback):
     def on_validation_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0):
         if batch_idx == 0:  # Log first validation batch
             self._log_images(pl_module, batch, batch_idx, split="val")
+
+    def on_test_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0):
+        # Log all test batches to save reconstructions for evaluation
+        self._log_images(pl_module, batch, batch_idx, split="test")
