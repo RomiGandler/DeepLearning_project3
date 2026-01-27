@@ -169,6 +169,27 @@ class VQModel(pl.LightningModule):
         self.log_dict(log_dict_disc)
         return aeloss
 
+    def test_step(self, batch, batch_idx):
+        """Test step - evaluates reconstruction quality on test set."""
+        x = self.get_input(batch, self.image_key)
+        xrec, qloss = self(x)
+        
+        aeloss, log_dict_ae = self.loss(
+            qloss, x, xrec, 0, self.global_step,
+            last_layer=self.get_last_layer(), split="test"
+        )
+        discloss, log_dict_disc = self.loss(
+            qloss, x, xrec, 1, self.global_step,
+            last_layer=self.get_last_layer(), split="test"
+        )
+        
+        rec_loss = log_dict_ae["test/rec_loss"]
+        self.log("test/rec_loss", rec_loss, prog_bar=True, logger=True, sync_dist=True)
+        self.log("test/aeloss", aeloss, prog_bar=True, logger=True, sync_dist=True)
+        self.log_dict(log_dict_ae)
+        self.log_dict(log_dict_disc)
+        return aeloss
+
     def configure_optimizers(self):
         lr = self.learning_rate
         opt_ae = torch.optim.Adam(
