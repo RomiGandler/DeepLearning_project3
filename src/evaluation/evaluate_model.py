@@ -23,10 +23,9 @@ import numpy as np
 import torch
 from typing import Optional, Dict, List
 
-from src.evaluation.chess_eval_dataset import ChessEvalDataset
+from src.evaluation.dataloader import ChessEvalDataset
 from src.evaluation.data_saver import DataSaver
-from src.evaluation.grid_extractors.sam_grid_extractor_with_centroids import SAMGridExtractor
-from src.evaluation.grid_extractors.interface import GridExtractor
+from src.evaluation.sam_grid_extractor import SAMGridExtractor
 from src.evaluation.fen_to_grid import fen_to_two_channel_grid_numpy
 from src.evaluation.board_metrics import (
     compute_board_accuracy,

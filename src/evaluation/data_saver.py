@@ -9,7 +9,7 @@ import numpy as np
 import cv2
 from typing import Optional, Dict, List
 
-from src.evaluation.grid_extractors.interface import PieceDetection, BOARD_SIZE
+from src.evaluation.sam_grid_extractor import PieceDetection, BOARD_SIZE
 
 
 class DataSaver:

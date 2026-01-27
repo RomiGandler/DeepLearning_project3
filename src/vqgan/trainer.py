@@ -17,6 +17,7 @@ Usage as module:
     latents = trainer.encode(images)
     reconstructed = trainer.decode(latents)
 """
+import os
 import datetime
 from pathlib import Path
 from typing import Optional, Union
@@ -75,6 +76,18 @@ class VQGANTrainer:
         if config is not None:
             self.config = config
         elif config_path is not None:
+            print(f"Loading config from {config_path}")
+            if not os.path.exists(config_path):
+                # Try to find it relative to project root or script directory
+                # Check if it exists in the script's directory
+                script_dir = os.path.dirname(os.path.abspath(__file__))
+                alt_path = os.path.join(script_dir, os.path.basename(config_path))
+                if os.path.exists(alt_path):
+                    print(f"Config not found at {config_path}, using {alt_path} instead")
+                    config_path = alt_path
+                else:
+                    raise FileNotFoundError(f"Config file not found at {config_path} (CWD: {os.getcwd()})")
+            
             self.config = OmegaConf.load(config_path)
         else:
             raise ValueError("Must provide either config_path or config")

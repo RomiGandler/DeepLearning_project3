@@ -16,10 +16,13 @@ Usage:
         python -m src.vqgan.main --config src/vqgan/config.yaml --resume checkpoints/model.ckpt --test-only
 """
 import argparse
-
+import sys
+import os
 from pytorch_lightning import seed_everything
 
-from .trainer import VQGANTrainer
+
+from src.vqgan.trainer import VQGANTrainer
+
 
 
 def parse_args():
@@ -34,8 +37,8 @@ def parse_args():
     parser.add_argument(
         "-c", "--config",
         type=str,
-        default="src/vqgan/config.yaml",
-        help="Path to config file (default: src/vqgan/config.yaml)"
+        default="src/vqgan/config_test.yaml",
+        help="Path to config file (default: src/vqgan/config_train.yaml)"
     )
     parser.add_argument(
         "-d", "--dataset",
@@ -119,16 +122,33 @@ def main():
     # Set seed for reproducibility
     seed_everything(args.seed)
     
+    # Resolve config path relative to the script if not found as is
+    config_path = args.config
+    if not os.path.exists(config_path):
+        # Try finding it relative to project root or current working directory
+        potential_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), config_path)
+        if os.path.exists(potential_path):
+            config_path = potential_path
+        elif not os.path.isabs(config_path):
+             # Try absolute path based on cwd
+             potential_path = os.path.abspath(config_path)
+             if os.path.exists(potential_path):
+                 config_path = potential_path
+
     # Create trainer
     trainer = VQGANTrainer(
-        config_path=args.config,
+        config_path=config_path,
         dataset_path=args.dataset,
         checkpoint_path=args.model,
         output_dir=args.output,
     )
     
     # Run training or testing
-    if args.test_only:
+    test_only = args.test_only
+    if not test_only and "training" in trainer.config:
+        test_only = trainer.config.training.get("test_only", False)
+
+    if test_only:
         trainer.test()
     else:
         trainer.train(

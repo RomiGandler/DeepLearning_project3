@@ -5,7 +5,7 @@ Provides tools for evaluating chess board generation models by comparing
 generated images against ground truth FEN positions using SAM-based detection.
 """
 
-from src.evaluation.chess_eval_dataset import ChessEvalDataset
+from src.evaluation.dataloader import ChessEvalDataset
 from src.evaluation.board_metrics import (
     compute_board_accuracy,
     compute_cell_level_accuracy,
