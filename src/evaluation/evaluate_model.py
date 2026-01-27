@@ -53,7 +53,7 @@ def evaluate_single(
     image: np.ndarray,
     fen: str,
     file_id: str,
-    extractor: GridExtractor,
+    extractor: SAMGridExtractor,
     saver: Optional[DataSaver] = None,
 ) -> Dict:
     """
@@ -91,7 +91,7 @@ def evaluate_batch(
     images: List[np.ndarray],
     fens: List[str],
     file_ids: List[str],
-    extractor: GridExtractor,
+    extractor: SAMGridExtractor,
     saver: Optional[DataSaver] = None,
 ) -> List[Dict]:
     """
