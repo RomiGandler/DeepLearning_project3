@@ -40,7 +40,7 @@ echo "#########################################################"
 ### Start your code below ####
 module load cuda/12.4
 cd /home/avinoamd/roni
-/home/avinoamd/.conda/envs/chess-proj/bin/python -u src.vqgan.main.pys
+/home/avinoamd/.conda/envs/chess-proj/bin/python -m src.vqgan.main
 
 echo "#########################################################"
 echo "Script ended successfully"
