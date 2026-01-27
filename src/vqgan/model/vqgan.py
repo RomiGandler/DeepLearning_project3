@@ -183,7 +183,7 @@ class VQModel(pl.LightningModule):
             last_layer=self.get_last_layer(), split="test"
         )
         
-        rec_loss = log_dict_ae["test/rec_loss"]
+        rec_loss = log_dict_ae.pop("test/rec_loss")
         self.log("test/rec_loss", rec_loss, prog_bar=True, logger=True, sync_dist=True)
         self.log("test/aeloss", aeloss, prog_bar=True, logger=True, sync_dist=True)
         self.log_dict(log_dict_ae)
