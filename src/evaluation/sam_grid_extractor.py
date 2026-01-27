@@ -12,11 +12,21 @@ import numpy as np
 import cv2
 import torch
 from typing import Tuple, List
+from dataclasses import dataclass
+from ultralytics.models.sam import SAM3SemanticPredictor
 
-try:
-    from ultralytics.models.sam import SAM3SemanticPredictor
-except ImportError:
-    SAM3SemanticPredictor = None
+BOARD_SIZE = 8
+
+@dataclass
+class PieceDetection:
+    """Represents a single detected chess piece."""
+    mask: np.ndarray
+    centroid: Tuple[float, float]
+    is_white: bool
+    area: int
+    grid_row: int = -1
+    grid_col: int = -1
+    filtered: bool = False
 
 
 class SAMGridExtractor:
@@ -24,7 +34,7 @@ class SAMGridExtractor:
     
     def __init__(
         self, 
-        model_path: str = "/home/avinoamd/roni/BBDM/SAM/sam3.pt",
+        model_path: str = "sam3.pt",
         device: str = 'auto',
         conf: float = 0.4,
         brightness_threshold: float = 110.0,
@@ -51,6 +61,7 @@ class SAMGridExtractor:
             device=device
         )
         self.predictor = SAM3SemanticPredictor(overrides=overrides)
+        self.predictor.setup_model(model_path, device=device)
     
     def _compute_centroid(self, mask: np.ndarray) -> Tuple[float, float]:
         mask_uint8 = mask.astype(np.uint8) * 255 if mask.dtype != np.uint8 else mask
