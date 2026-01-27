@@ -14,6 +14,7 @@ import torch
 from typing import Tuple, List
 from dataclasses import dataclass
 from ultralytics.models.sam import SAM3SemanticPredictor
+from src.evaluation.model_loader import get_sam_checkpoint
 
 BOARD_SIZE = 8
 
@@ -34,7 +35,6 @@ class SAMGridExtractor:
     
     def __init__(
         self, 
-        model_path: str = "sam3.pt",
         device: str = 'auto',
         conf: float = 0.4,
         brightness_threshold: float = 110.0,
@@ -55,13 +55,12 @@ class SAMGridExtractor:
             conf=conf,
             task="segment",
             mode="predict",
-            model=model_path,
+            model=get_sam_checkpoint(),
             half=(device != 'cpu'),
             save=False,
             device=device
         )
         self.predictor = SAM3SemanticPredictor(overrides=overrides)
-        self.predictor.setup_model(model_path, device=device)
     
     def _compute_centroid(self, mask: np.ndarray) -> Tuple[float, float]:
         mask_uint8 = mask.astype(np.uint8) * 255 if mask.dtype != np.uint8 else mask
