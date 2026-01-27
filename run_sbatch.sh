@@ -39,11 +39,8 @@ echo "#########################################################"
 
 ### Start your code below ####
 module load cuda/12.4
-source activate /home/avinoamd/.conda/envs/roni
-export HF_TOKEN=HF_TOKEN_PLACEHOLDER
-export NCCL_P2P_DISABLE=1
-cd /home/avinoamd/roni/taming-transformers
-/home/avinoamd/.conda/envs/taming/bin/python -u main.py --base configs/chess_finetune.yaml -t True --gpus 0,
+cd /home/avinoamd/roni
+/home/avinoamd/.conda/envs/chess-proj/bin/python -u src.vqgan.main.pys
 
 echo "#########################################################"
 echo "Script ended successfully"
