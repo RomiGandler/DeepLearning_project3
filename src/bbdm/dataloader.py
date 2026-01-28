@@ -34,7 +34,7 @@ class BBDMChessDataset(BaseChessDataset):
         image_size: int = 256,
         flip: bool = True,
         to_normal: bool = True,
-        use_masks: bool = True,
+        use_masks: bool = False,
     ):
         # Extract from BBDM config if provided
         if dataset_config is not None:
