@@ -4,7 +4,7 @@
 # EDIT THESE PARAMETERS GLOBALLY - they will be used in both #SBATCH directives
 # and in the bash script
 # ============================================================================
-JOB_NAME="vqgan_finetune"
+JOB_NAME="bbdm_f4"
 MEM="40G"
 GPUS="rtx_2080:1"
 # =====================================================================ß=======
@@ -40,7 +40,7 @@ echo "#########################################################"
 ### Start your code below ####
 module load cuda/12.4
 cd /home/avinoamd/roni
-/home/avinoamd/.conda/envs/chess-proj/bin/python -m src.vqgan.main
+/home/avinoamd/.conda/envs/chess-proj/bin/python -m src.bbdm.main -c src/bbdm/configs/f4_config.yaml -t
 
 echo "#########################################################"
 echo "Script ended successfully"
