@@ -31,6 +31,7 @@ data:
     channels: 3
     to_normal: True
     flip: True
+    use_masks: False
   train:
     batch_size: 8
     shuffle: True
