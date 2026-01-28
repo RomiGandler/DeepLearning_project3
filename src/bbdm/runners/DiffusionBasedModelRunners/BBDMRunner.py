@@ -31,7 +31,7 @@ class BBDMRunner(DiffusionBaseRunner):
     def load_model_from_checkpoint(self):
         states = None
         if self.config.model.only_load_latent_mean_std:
-            if self.config.model.__contains__('model_load_path') and self.config.model.model_load_path is not None:
+            if hasattr(self.config.model, 'model_load_path') and self.config.model.model_load_path is not None:
                 states = torch.load(self.config.model.model_load_path, map_location='cpu')
         else:
             states = super().load_model_from_checkpoint()
@@ -169,9 +169,9 @@ class BBDMRunner(DiffusionBaseRunner):
         loss, additional_info = net(x, x_cond)
         if write and self.is_main_process:
             self.writer.add_scalar(f'loss/{stage}', loss, step)
-            if additional_info.__contains__('recloss_noise'):
+            if 'recloss_noise' in additional_info:
                 self.writer.add_scalar(f'recloss_noise/{stage}', additional_info['recloss_noise'], step)
-            if additional_info.__contains__('recloss_xy'):
+            if 'recloss_xy' in additional_info:
                 self.writer.add_scalar(f'recloss_xy/{stage}', additional_info['recloss_xy'], step)
         return loss
 
