@@ -19,6 +19,7 @@ from tqdm.autonotebook import tqdm
 
 from src.bbdm.runners.base.EMA import EMA
 from src.bbdm.runners.utils import make_save_dirs, make_dir, get_dataset, remove_file
+from src.bbdm.utils import namespace2dict
 
 
 class BaseRunner(ABC):
@@ -176,6 +177,15 @@ class BaseRunner(ABC):
 
         if self.use_ema:
             model_states['ema'] = self.ema.shadow
+        
+        # Embed inference config in checkpoint for standalone loading
+        model_states['inference_config'] = {
+            'model': namespace2dict(self.config.model),
+            'data': {
+                'dataset_config': namespace2dict(self.config.data.dataset_config)
+            }
+        }
+        
         return model_states, optimizer_scheduler_states
 
     # EMA part
