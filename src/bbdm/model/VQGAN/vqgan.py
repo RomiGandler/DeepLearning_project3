@@ -13,8 +13,6 @@ BBDM accesses these as separate components:
 Auto-download: If ckpt_path is None or doesn't exist locally,
 automatically downloads from HuggingFace.
 """
-from pathlib import Path
-
 import torch
 import torch.nn as nn
 
@@ -70,24 +68,10 @@ class VQModel(nn.Module):
             self.init_from_ckpt(resolved_path, ignore_keys=ignore_keys)
     
     def _resolve_ckpt_path(self, ckpt_path):
-        """
-        Resolve checkpoint path, downloading from HuggingFace if needed.
-        
-        Supports multiple input formats:
-            - None: Download default VQGAN checkpoint
-            - "/full/path/to/file.ckpt": Use local file directly
-            - "vqgan_f8.ckpt": Download specific file by name from HuggingFace
-            - "auto": Download default checkpoint (same as None)
-            - "auto:vqgan_f4.ckpt": Download specific file by name
-        
-        Args:
-            ckpt_path: Path specification (see formats above)
-            
-        Returns:
-            Resolved path to checkpoint file
-        """
-        from src.data.hf_downloader import HFResourceManager
-        return HFResourceManager.resolve_checkpoint_path(ckpt_path, checkpoint_type="vqgan")
+        """Resolve checkpoint path, downloading from HF if needed."""
+        from src.bbdm.checkpoint_utils import resolve_checkpoint
+        result = resolve_checkpoint(ckpt_path)
+        return str(result) if result else None
     
     def init_from_ckpt(self, path, ignore_keys=None):
         """Load weights from checkpoint."""
