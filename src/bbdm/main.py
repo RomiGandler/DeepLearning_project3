@@ -71,6 +71,34 @@ def parse_args_and_config():
     if args.max_steps is not None:
         namespace_config.training.n_steps = args.max_steps
 
+    # ------------------------------------------------------------------
+    # Validate required checkpoints (explicit user choice)
+    #
+    # Project policy:
+    # - User MUST specify both VQGAN and BBDM checkpoints for training/test.
+    # - Values may be either:
+    #   - a filename (resolved under ./checkpoints and downloaded from HF if missing)
+    #   - an absolute/relative filesystem path
+    # ------------------------------------------------------------------
+    if not hasattr(namespace_config, "model"):
+        raise ValueError("Config missing required section: model")
+    if not hasattr(namespace_config.model, "VQGAN") or not hasattr(namespace_config.model.VQGAN, "params"):
+        raise ValueError("Config missing required section: model.VQGAN.params")
+
+    vqgan_ckpt = getattr(namespace_config.model.VQGAN.params, "ckpt_path", None)
+    if vqgan_ckpt is None or str(vqgan_ckpt).strip() == "":
+        raise ValueError(
+            "You must set `model.VQGAN.params.ckpt_path` in the config (filename or path). "
+            "It will be downloaded into `./checkpoints/` if missing."
+        )
+
+    bbdm_ckpt = getattr(namespace_config.model, "model_load_path", None)
+    if bbdm_ckpt is None or str(bbdm_ckpt).strip() == "":
+        raise ValueError(
+            "You must set `model.model_load_path` in the config (filename or path). "
+            "It will be downloaded into `./checkpoints/` if missing."
+        )
+
     dict_config = namespace2dict(namespace_config)
 
     return namespace_config, dict_config

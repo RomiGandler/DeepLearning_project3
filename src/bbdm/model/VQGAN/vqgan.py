@@ -15,6 +15,7 @@ automatically downloads from HuggingFace.
 """
 import torch
 import torch.nn as nn
+import argparse
 
 # Reuse modules from src/vqgan - no code duplication
 from src.vqgan.model.modules.diffusionmodules.model import Encoder, Decoder
@@ -51,6 +52,11 @@ class VQModel(nn.Module):
         
         if ignore_keys is None:
             ignore_keys = []
+
+        # ddconfig comes from YAML -> dict2namespace, so it may be an argparse.Namespace.
+        # Encoder/Decoder expect a mapping (dict-like) for **kwargs.
+        if isinstance(ddconfig, argparse.Namespace):
+            ddconfig = vars(ddconfig)
         
         self.encoder = Encoder(**ddconfig)
         self.decoder = Decoder(**ddconfig)

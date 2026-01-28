@@ -60,7 +60,7 @@ class BaseRunner(ABC):
         self.print_model_summary(self.net)
 
         # initialize EMA
-        self.use_ema = False if not self.config.model.__contains__('EMA') else self.config.model.EMA.use_ema
+        self.use_ema = False if not hasattr(self.config.model, 'EMA') else self.config.model.EMA.use_ema
         if self.use_ema:
             self.ema = EMA(self.config.model.EMA.ema_decay)
             self.update_ema_interval = self.config.model.EMA.update_ema_interval
@@ -115,7 +115,7 @@ class BaseRunner(ABC):
     # load model, EMA, optimizer, scheduler from checkpoint
     def load_model_from_checkpoint(self):
         model_states = None
-        if self.config.model.__contains__('model_load_path') and self.config.model.model_load_path is not None:
+        if hasattr(self.config.model, 'model_load_path') and self.config.model.model_load_path is not None:
             # Resolve checkpoint path (downloads from HF if needed)
             resolved_path = self._resolve_bbdm_checkpoint_path(self.config.model.model_load_path)
             
@@ -136,7 +136,7 @@ class BaseRunner(ABC):
 
                 # load optimizer and scheduler
                 if self.config.args.train:
-                    if self.config.model.__contains__('optim_sche_load_path') and self.config.model.optim_sche_load_path is not None:
+                    if hasattr(self.config.model, 'optim_sche_load_path') and self.config.model.optim_sche_load_path is not None:
                         optimizer_scheduler_states = torch.load(self.config.model.optim_sche_load_path, map_location='cpu', weights_only=False)
                         for i in range(len(self.optimizer)):
                             self.optimizer[i].load_state_dict(optimizer_scheduler_states['optimizer'][i])
