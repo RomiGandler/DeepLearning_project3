@@ -1,0 +1,12 @@
+{
+  "num_evaluated": 93,
+  "avg_overall_accuracy": 0.9712701612903226,
+  "avg_cell_accuracy": 0.9707661290322581,
+  "avg_white_f1": 0.9246941420339769,
+  "avg_black_f1": 0.9412483117913687,
+  "avg_white_recall": 0.8871893357205135,
+  "avg_black_recall": 0.9873353351828873,
+  "avg_white_precision": 0.9829573362104355,
+  "avg_black_precision": 0.9071681928891008,
+  "error_rate": 0.029233870967741882
+}

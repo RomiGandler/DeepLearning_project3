@@ -46,14 +46,7 @@ model:
   latent_before_quant_conv: False
   normalize_latent: False
   only_load_latent_mean_std: False
-  
-  # BBDM Checkpoint Options:
-  #   - null: Train from scratch (default)
-  #   - "auto": Download default BBDM checkpoint from HuggingFace
-  #   - "auto:bbdm_f4.pth": Download specific checkpoint by name
-  #   - "bbdm_f4.pth": Download by filename (short form)
-  #   - "/path/to/checkpoint.pth": Load from local file
-  # model_load_path: null
+  model_load_path: "latest_model_392.pth"
   # optim_sche_load_path: null
 
   EMA:

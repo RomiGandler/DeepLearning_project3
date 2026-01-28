@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 from PIL import Image
 from datetime import datetime
+import src.bbdm.dataloader
 from torchvision.utils import make_grid, save_image
 from src.bbdm.Register import Registers
 
@@ -57,25 +58,9 @@ def get_optimizer(optim_config, parameters):
 
 
 def get_dataset(data_config):
-    """
-    Get train, val, and test datasets.
-    
-    If test split doesn't exist, returns None for test_dataset.
-    The caller (BaseRunner.test()) will fall back to val_dataset if test is None.
-    """
-    # Lazy import to trigger dataset registration and avoid circular imports
-    import src.bbdm.dataloader  # noqa: F401
-    
     train_dataset = Registers.datasets[data_config.dataset_type](data_config.dataset_config, stage='train')
     val_dataset = Registers.datasets[data_config.dataset_type](data_config.dataset_config, stage='val')
-    
-    # Test split is optional - if it doesn't exist, return None
-    try:
-        test_dataset = Registers.datasets[data_config.dataset_type](data_config.dataset_config, stage='test')
-    except (AssertionError, FileNotFoundError) as e:
-        print(f"Test dataset not found, will use validation dataset for testing: {e}")
-        test_dataset = None
-    
+    test_dataset = Registers.datasets[data_config.dataset_type](data_config.dataset_config, stage='test')
     return train_dataset, val_dataset, test_dataset
 
 
