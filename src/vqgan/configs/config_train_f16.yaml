@@ -14,7 +14,7 @@ model:
     # Checkpoint name - downloads from HuggingFace if not found in checkpoints/
     # Examples: "vqgan_f16.ckpt", or null for training from scratch
     # Also supports full paths: "/path/to/model.ckpt"
-    ckpt: null  # Train from scratch for f16
+    ckpt: "CelebAMaskHQ-f16.ckpt"  # Train from scratch for f16
     
     # Codebook configuration
     embed_dim: 8        # Embedding dimension (d=8 for f16 model)
@@ -43,7 +43,7 @@ model:
         disc_start: 10000       # Start discriminator training after this many steps
         disc_weight: 0.8        # Discriminator loss weight
         codebook_weight: 1.0    # Codebook/commitment loss weight
-        disc_num_layers: 3
+        disc_num_layers: 2
         perceptual_weight: 1.0  # LPIPS perceptual loss weight
 
 # Data configuration
