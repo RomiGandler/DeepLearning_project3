@@ -13,19 +13,46 @@ from PIL import Image
 # Ensure current directory is in path
 sys.path.append(os.getcwd())
 
-from src.bbdm.inference import load_pipeline
+from src.bbdm.inference import BBDMPipeline
 from src.evaluation.evaluate_model import evaluate_single
 from src.evaluation.sam_grid_extractor import SAMGridExtractor
+from src.evaluation.data_saver import DataSaver
+from src.blender.crop_board import process_single_image
 
-# Import the cropping script as requested
-# We assume 'scripts/crop_board.py' exists as per instructions
-try:
-    from scripts.crop_board import process_single_image
-except ImportError:
-    print("⚠️  Warning: Could not import scripts.crop_board. Cropping may fail if script is missing.")
-    # Define a dummy function to avoid NameError if import fails but logic continues
-    def process_single_image(*args, **kwargs):
-        print("❌ Error: process_single_image called but module not loaded.")
+# ==========================================
+# Helper Functions
+# ==========================================
+
+def _save_grid_visual(grid: np.ndarray, save_path: str, cell_size: int = 50):
+    """
+    Save a visual representation of the predicted grid.
+    Colors: Green=White piece, Red=Black piece, Yellow=Both (conflict), Black=Empty
+    """
+    board_size = grid.shape[1]
+    h, w = board_size * cell_size, board_size * cell_size
+    img = np.zeros((h, w, 3), dtype=np.uint8)
+    
+    for r in range(board_size):
+        for c in range(board_size):
+            y1, y2 = r * cell_size, (r + 1) * cell_size
+            x1, x2 = c * cell_size, (c + 1) * cell_size
+            
+            is_white = grid[0, r, c] > 0.5
+            is_black = grid[1, r, c] > 0.5
+            
+            if is_white and is_black:
+                color = (0, 255, 255)  # Yellow - conflict
+            elif is_white:
+                color = (0, 255, 0)    # Green - white piece
+            elif is_black:
+                color = (0, 0, 255)    # Red - black piece
+            else:
+                color = (0, 0, 0)      # Black - empty
+            
+            cv2.rectangle(img, (x1, y1), (x2, y2), color, -1)
+            cv2.rectangle(img, (x1, y1), (x2, y2), (50, 50, 50), 1)  # Grid lines
+    
+    cv2.imwrite(save_path, img)
 
 # ==========================================
 # Configuration Loading
@@ -55,7 +82,7 @@ def get_pipeline():
     if _PIPELINE is None:
         print("🔧 Loading BBDM Pipeline...")
         # Resolve paths relative to current working directory
-        _PIPELINE = load_pipeline(
+        _PIPELINE = BBDMPipeline(
             config=cfg['models']['bbdm_config'],
             bbdm_checkpoint=cfg['models']['bbdm_checkpoint'],
             vqgan_checkpoint=cfg['models']['vqgan_checkpoint'],
@@ -114,9 +141,14 @@ def generate_chessboard_image(fen: str, viewpoint: str) -> None:
     
     try:
         # Run Blender
-        subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+        result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+        print(result.stdout)
+        print(result.stderr)
     except subprocess.CalledProcessError as e:
+        
         print(f"❌ Error running Blender: {e}")
+        print(e.stdout)
+        print(e.stderr)
         return
     except FileNotFoundError:
         print(f"❌ Blender executable not found at: {blender_exec}")
@@ -156,9 +188,12 @@ def generate_chessboard_image(fen: str, viewpoint: str) -> None:
     # ======================================================
     # Optional: Evaluation
     # ======================================================
-    # Check config or env var
-    should_eval = cfg.get('evaluation', {}).get('enabled', False) or \
-                  os.environ.get("ENABLE_EVALUATION") == "1"
+    # Check config or env var (DISABLE_EVALUATION takes priority)
+    if os.environ.get("DISABLE_EVALUATION") == "1":
+        should_eval = False
+    else:
+        should_eval = cfg.get('evaluation', {}).get('enabled', False) or \
+                      os.environ.get("ENABLE_EVALUATION") == "1"
 
     if should_eval:
         print("📊 Running Evaluation on generated image...")
@@ -169,13 +204,25 @@ def generate_chessboard_image(fen: str, viewpoint: str) -> None:
             if real_img_cv2 is None:
                  raise ValueError("Could not read realistic image for evaluation")
             
+            # Use DataSaver to save predicted grid and other debug images
+            saver = DataSaver(results_dir)
+            
             metrics = evaluate_single(
                 image=real_img_cv2,
                 fen=fen,
                 file_id="generated_eval",
-                extractor=extractor
+                extractor=extractor,
+                saver=saver
             )
+            
+            # Also save predicted grid visualization directly to results folder
+            pred_grid = metrics['pred_grid']
+            path_pred_grid = os.path.join(results_dir, "predicted_grid.png")
+            _save_grid_visual(pred_grid, path_pred_grid)
+            
             print(f"   ✅ Cell Accuracy: {metrics['cell_accuracy']:.2%}")
+            print(f"   💾 Predicted grid saved to: {path_pred_grid}")
+            print(f"   📁 Detailed debug files in: {os.path.join(saver.debug_dir, 'generated_eval')}/")
         except Exception as e:
             print(f"   ⚠️ Evaluation failed: {e}")
 
@@ -213,9 +260,53 @@ def generate_chessboard_image(fen: str, viewpoint: str) -> None:
         print("❌ Error reading images for side-by-side.")
 
 if __name__ == "__main__":
-    # Example usage for testing
-    test_fen = "8/5k2/3p4/1p1Pp2p/pP2Pp1P/P4P1K/8/8 b - - 0 1"
+    import argparse
+    
+    parser = argparse.ArgumentParser(
+        description="Generate realistic chessboard images from FEN notation",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Generate from starting position (white view)
+  python submission.py --fen "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+  
+  # Generate from black's perspective
+  python submission.py --fen "8/5k2/3p4/1p1Pp2p/pP2Pp1P/P4P1K/8/8 b - - 0 1" --viewpoint black
+  
+  # Disable evaluation
+  python submission.py --fen "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1" --no-eval
+        """
+    )
+    
+    parser.add_argument(
+        "--fen", "-f",
+        type=str,
+        default="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        help="FEN string describing the chess position (default: starting position)"
+    )
+    parser.add_argument(
+        "--viewpoint", "-v",
+        type=str,
+        choices=["white", "black"],
+        default="white",
+        help="Viewpoint: 'white' or 'black' (default: white)"
+    )
+    parser.add_argument(
+        "--no-eval",
+        action="store_true",
+        help="Disable evaluation (overrides config)"
+    )
+    
+    args = parser.parse_args()
+    
+    # Override evaluation setting if --no-eval flag is set
+    if args.no_eval:
+        os.environ["DISABLE_EVALUATION"] = "1"
+    
     try:
-        generate_chessboard_image(test_fen, "white")
+        print(f"🎯 FEN: {args.fen}")
+        print(f"👁️  Viewpoint: {args.viewpoint}")
+        generate_chessboard_image(args.fen, args.viewpoint)
     except Exception as e:
-        print(f"FAILED: {e}")
+        print(f"❌ FAILED: {e}")
+        raise

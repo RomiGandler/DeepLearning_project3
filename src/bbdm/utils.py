@@ -3,8 +3,6 @@ import importlib
 import omegaconf.dictconfig
 
 from src.bbdm.Register import Registers
-from src.bbdm.runners.DiffusionBasedModelRunners.BBDMRunner import BBDMRunner
-from src.bbdm.runners.DiffusionBasedModelRunners.MaskedBBDMRunner import MaskedBBDMRunner
 
 
 def dict2namespace(config):
