@@ -1,20 +1,20 @@
 blender:
   # Path to the Blender executable on the system
-  exec_path: "/Applications/Blender.app/Contents/MacOS/Blender"
+  exec_path: "/home/avinoamd/roni/blender-5.0.1-linux-x64/blender"
   # Path to the .blend file (relative to project root)
-  blend_file: "blender/chess-set.blend"
+  blend_file: "/home/avinoamd/roni/src/blender/chess-set.blend"
   # Path to the python generation script (relative to project root)
   script_file: "src/blender/generate_synthtic_from_fen.py"
 
 models:
   # Paths to your trained models (relative to project root)
-  bbdm_config: "results/all_data_f4/LBBDM-f4/checkpoint/config.yaml"
-  bbdm_checkpoint: "results/all_data_f4/LBBDM-f4/checkpoint/last_model.pth"
-  vqgan_checkpoint: "results/VQGAN/last.ckpt"
+  bbdm_config: "/home/avinoamd/roni/src/bbdm/configs/f4_config.yaml"
+  bbdm_checkpoint: "latest_model_392.pth"
+  vqgan_checkpoint: "vqgan_f4.ckpt"
 
 evaluation:
   # Set to true to run evaluation automatically
-  enabled: false
+  enabled: true
 
 output:
   # Directory where results will be saved - NOTE: submission.py enforces ./results/ as per PDF requirements
