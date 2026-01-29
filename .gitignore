@@ -152,6 +152,7 @@ controlNet/outputs/
 .bbdm_sbatch.sh
 .lbbdm_sbatch.sh
 .mlbbdm_sbatch.sh
+.test_sbatch.sh
 
 # SLURM job scripts
 *_sbatch.sh
