@@ -1,0 +1,78 @@
+# VQGAN f16 Configuration for Chess Dataset
+# ==========================================
+# Downsampling factor: 16 (256 -> 16x16 latent)
+# Architecture: 4 downsampling stages via ch_mult with 5 elements
+#
+# Latent properties:
+#   - Spatial size: 256/16 = 16x16
+#   - Channels: 8 (z_channels = embed_dim = 8)
+#   - Total latent dimensions: 16 * 16 * 8 = 2048
+
+model:
+  base_learning_rate: 4.5e-6
+  params:
+    # Checkpoint name - downloads from HuggingFace if not found in checkpoints/
+    # Examples: "vqgan_f16.ckpt", or null for training from scratch
+    # Also supports full paths: "/path/to/model.ckpt"
+    ckpt: "CelebAMaskHQ-f16.ckpt"  # Train from scratch for f16
+    
+    # Codebook configuration
+    embed_dim: 8        # Embedding dimension (d=8 for f16 model)
+    n_embed: 16384      # Codebook size (larger codebook for compressed latent)
+    
+    # Encoder/Decoder architecture
+    ddconfig:
+      double_z: false
+      z_channels: 8     # Latent channels (d=8 for f16 model)
+      resolution: 256
+      in_channels: 3
+      out_ch: 3
+      ch: 128
+      # f16 architecture: 5 elements = 4 downsampling steps = 256/16 = 16x16 latent
+      ch_mult: [1, 1, 2, 2, 4]
+      num_res_blocks: 2
+      attn_resolutions: [16]  # Attention at final 16x16 resolution
+      dropout: 0.0
+
+    # Loss configuration
+    lossconfig:
+      target: src.vqgan.model.modules.losses.vqperceptual.VQLPIPSWithDiscriminator
+      params:
+        disc_conditional: false
+        disc_in_channels: 3
+        disc_start: 10000       # Start discriminator training after this many steps
+        disc_weight: 0.8        # Discriminator loss weight
+        codebook_weight: 1.0    # Codebook/commitment loss weight
+        disc_num_layers: 2
+        perceptual_weight: 1.0  # LPIPS perceptual loss weight
+
+# Data configuration
+data:
+  params:
+    batch_size: 2
+    num_workers: 8
+    
+    train:
+      params:
+        size: 256
+        image_key: both    # 'A' for condition images, 'B' for target images, 'both' for all
+    
+    validation:
+      params:
+        size: 256
+        image_key: both
+    
+    test:
+      params:
+        size: 256
+        image_key: both
+
+# Training configuration (used by trainer.py CLI)
+training:
+  test_only: false
+  max_epochs: 100
+  gpus: 1
+  precision: 32
+  accumulate_grad_batches: 1
+  log_every_n_steps: 50
+  val_check_interval: 1.0

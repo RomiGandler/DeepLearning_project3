@@ -4,7 +4,7 @@
 # EDIT THESE PARAMETERS GLOBALLY - they will be used in both #SBATCH directives
 # and in the bash script
 # ============================================================================
-JOB_NAME="vqgan_finetune"
+JOB_NAME="vqgan_f16_train"
 MEM="40G"
 GPUS="rtx_2080:1"
 # =====================================================================ß=======
@@ -39,11 +39,8 @@ echo "#########################################################"
 
 ### Start your code below ####
 module load cuda/12.4
-source activate /home/avinoamd/.conda/envs/roni
-export HF_TOKEN=HF_TOKEN_PLACEHOLDER
-export NCCL_P2P_DISABLE=1
-cd /home/avinoamd/roni/taming-transformers
-/home/avinoamd/.conda/envs/taming/bin/python -u main.py --base configs/chess_finetune.yaml -t True --gpus 0,
+cd /home/avinoamd/roni
+/home/avinoamd/.conda/envs/chess-proj/bin/python -m src.vqgan.main -c src/vqgan/configs/config_train_f16.yaml
 
 echo "#########################################################"
 echo "Script ended successfully"

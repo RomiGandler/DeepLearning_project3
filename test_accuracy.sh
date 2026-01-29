@@ -4,7 +4,7 @@
 # EDIT THESE PARAMETERS GLOBALLY - they will be used in both #SBATCH directives
 # and in the bash script
 # ============================================================================
-JOB_NAME="acc_f8_s075"
+JOB_NAME="acc_gt"
 MEM="20G"
 GPUS="rtx_3090:1"
 # =====================================================================ß=======
@@ -39,14 +39,9 @@ echo "#########################################################"
 
 ### Start your code below ####
 module load cuda/12.4
-source activate /home/avinoamd/.conda/envs/sam_env
-cd /home/avinoamd/roni/evaluation
+cd /home/avinoamd/roni
 export PYTHONNOUSERSITE=1
-/home/avinoamd/.conda/envs/sam_env/bin/python -u evaluate_model.py \
-    --generated_dir /home/avinoamd/roni/BBDM/results/all_data_f8_maske_scale_075/MLBBDM-f8-scale_075/sample_to_eval/200 \
-    --csv_path /home/avinoamd/roni/BBDM/data_10.01_no_hands/test/test_data.csv \
-    --gt_images_dir /home/avinoamd/roni/BBDM/results/all_data_f8_maske_scale_075/MLBBDM-f8-scale_075/sample_to_eval/ground_truth \
-    --output_dir /home/avinoamd/roni/BBDM/results/all_data_f8_maske_scale_075/MLBBDM-f8-scale_075/evaluation/f8_s075
+/home/avinoamd/.conda/envs/chess-proj/bin/python -m src.evaluation.evaluate_model --dataset_path /home/avinoamd/roni/src/data/dataset --stage test
 
 echo "#########################################################"
 echo "Script ended successfully"

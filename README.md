@@ -1,380 +1,186 @@
-# Deep Learning Project 3: Synthetic-to-Real Chess Image Translation
+# Chess Image Generation Pipeline
 
-This repository contains the implementation for synthetic-to-real chessboard image translation using **BBDM (Brownian Bridge Diffusion Model)**, **VQGAN (Taming Transformers)**, and **SAM (Segment Anything Model)** for data preprocessing.
+Generate realistic chessboard images from FEN notation using Brownian Bridge Diffusion Model (BBDM).
 
----
+## Quick Start
 
-## 📁 Repository Structure
+### 1. Clone & Setup Environment
 
-```
-.
-├── BBDM/                      # Brownian Bridge Diffusion Model
-│   ├── configs/               # YAML configuration files
-│   ├── friefeld_data/         # Training data (A=synthetic, B=real) [NOT IN GIT]
-│   ├── SAM/                   # Segment Anything Model scripts
-│   ├── results/               # Training outputs & checkpoints [NOT IN GIT]
-│   └── main.py                # Main training script
-├── taming-transformers/       # VQGAN for latent space encoding
-│   ├── configs/               # YAML configuration files
-│   ├── logs/                  # Training logs & checkpoints [NOT IN GIT]
-│   └── main.py                # Main training script
-├── cycleGAN/                  # CycleGAN implementation
-├── controlNet/                # ControlNet scripts
-├── blender/                   # Blender scripts for synthetic data
-├── scripts/                   # Utility scripts
-├── bbdm_sbatch.sh             # SLURM script for BBDM training
-├── run_sbatch.sh              # SLURM script for VQGAN training
-└── sam_sbatch.sh              # SLURM script for SAM processing
+```bash
+# Clone repository
+git clone https://github.com/RomiGandler/DeepLearning_project3
+
+# Create conda environment
+conda env create -f src/environment.yaml
+conda activate chess-proj
 ```
 
 ---
 
-## 🔗 Original Repositories
+## HuggingFace Resources
 
-| Model | Repository | Paper |
-|-------|-----------|-------|
-| **BBDM** | [bo-10000/BBDM](https://github.com/xuekt98/BBDM?tab=readme-ov-file) | [arXiv:2205.07680](https://arxiv.org/abs/2205.07680) |
-| **VQGAN** | [CompVis/taming-transformers](https://github.com/CompVis/taming-transformers) | [arXiv:2012.09841](https://arxiv.org/abs/2012.09841) |
-| **SAM** | [ultralytics/ultralytics](https://github.com/ultralytics/ultralytics) | Segment Anything Model |
+| Resource | Repository |
+|----------|------------|
+| Models | [`roni-hershko/chess_model`](https://huggingface.co/roni-hershko/chess_model) |
+| Dataset | [`roni-hershko/chess_data`](https://huggingface.co/datasets/roni-hershko/chess_data) |
 
----
+**Available checkpoints:** `vqgan_f4.ckpt`, `vqgan_f8.ckpt`, `latest_model_392.pth`, `sam3.pt`
 
-## 🛠️ Environment Setup
+### Automatic Download
 
-### 1. BBDM Environment (`roni`)
+Models and dataset are **automatically downloaded** when needed:
+
+1. **Model checkpoints** - When you specify a filename (e.g., `vqgan_f4.ckpt`) in the config, the code checks if it exists in `./checkpoints/`. If not found, it downloads from `roni-hershko/chess_model` via the `HFResourceManager` in `src/data/hf_downloader.py`.
+
+2. **Dataset** - When `dataset_path: null` in BBDM/VQGAN configs, the dataset auto-downloads from `roni-hershko/chess_data` to `src/data/dataset/`.
+
+3. **SAM model** - The evaluation module auto-downloads `sam3.pt` on first use.
+
+No manual setup required - just run the code and models download automatically.
+
+### Manual Download (Optional)
+
+If you prefer to download manually:
 ```bash
-conda env create -f BBDM/environment.yml
-conda activate roni
-```
+pip install huggingface_hub
 
-### 2. VQGAN/Taming Environment (`taming`)
-```bash
-conda env create -f taming-transformers/environment.yaml
-conda activate taming
-cd taming-transformers && pip install -e .
-```
+# Download all model checkpoints
+huggingface-cli download roni-hershko/chess_model --local-dir ./checkpoints
 
-### 3. SAM Environment (`sam_env`)
-```bash
-conda create -n sam_env python=3.10
-conda activate sam_env
-pip install ultralytics opencv-python imagehash pillow
-```
-
----
-
-## 🎯 Pipeline Overview
-
-```
-1. SAM → Extract chess piece masks & filter hand images
-2. VQGAN → Finetune encoder on chess images (creates latent space)
-3. BBDM → Train diffusion model for synthetic→real translation
+# Download dataset
+huggingface-cli download roni-hershko/chess_data --repo-type dataset --local-dir ./data/dataset
 ```
 
 ---
 
-## 1️⃣ SAM: Data Preprocessing
+## Run Inference
 
-### Purpose
-SAM is used to:
-- **Detect and filter** images containing hands
-- **Generate segmentation masks** of chess pieces
-- **Deduplicate** similar frames from video data
-
-### Scripts
-
-| Script | Description |
-|--------|-------------|
-| `BBDM/SAM/extract_chess_pieces.py` | Process `friefeld_data/` - separates hand/no-hand images, generates masks |
-| `BBDM/SAM/extract_chess_pieces_pgn.py` | Process `pgn_data/` game folders |
-| `BBDM/SAM/deduplicate_frames.py` | Remove duplicate/similar frames using MSE + perceptual hashing |
-
-### Data Structure (Input)
-```
-friefeld_data/
-├── train/
-│   ├── A/          # Synthetic images (input)
-│   └── B/          # Real images (ground truth)
-├── val/
-│   ├── A/
-│   └── B/
-└── test/
-    ├── A/
-    └── B/
-```
-
-### Output Structure
-After running SAM:
-```
-friefeld_data/
-├── train/
-│   ├── A/          # Original synthetic
-│   ├── B/          # Original real
-│   ├── no_hand/    # Images without hands ✓
-│   ├── with_hand/  # Images with hands (excluded)
-│   └── masks/      # Chess piece segmentation masks (PNG)
-```
-
-### Running SAM
-
-**Option A: Interactive (on GPU node)**
-```bash
-srun --gpus=rtx_3090:1 --mem=20G --pty bash
-source activate sam_env
-cd BBDM/SAM
-python extract_chess_pieces.py
-```
-
-**Option B: Using SLURM batch script**
-
-Edit `sam_sbatch.sh` to set your script, then:
-```bash
-bash sam_sbatch.sh
-```
-
-**Deduplication (dry run first)**
-```bash
-python deduplicate_frames.py                    # Dry run - shows what would be deleted
-python deduplicate_frames.py --execute          # Actually move duplicates
-```
-
----
-
-## 2️⃣ VQGAN: Finetuning the Latent Encoder
-
-### Purpose
-VQGAN learns to encode chess images into a compressed latent space. BBDM operates in this latent space for efficiency.
-
-### Pre-trained Model
-Download the base checkpoint and place at `BBDM/results/VQGAN/`:
-- **VQGAN-16**: [Download](https://heibox.uni-heidelberg.de/f/0e42b04e2e904890a9b6/?dl=1)
-
-### Data Preparation
-Create train/val text files listing image paths:
-```bash
-cd taming-transformers
-find /path/to/your/images -name "*.jpg" | shuf > train.txt
-# Split some for validation into val.txt
-```
-
-### Configuration
-Edit `taming-transformers/configs/chess_finetune.yaml`:
-```yaml
-model:
-  params:
-    ckpt_path: "/path/to/pretrained/model.ckpt"
-data:
-  params:
-    train:
-      params:
-        training_images_list_file: train.txt
-    validation:
-      params:
-        test_images_list_file: val.txt
-```
-
-### Running VQGAN Training
-```bash
-bash run_sbatch.sh
-```
-
-**Environment:** `taming`  
-**GPU:** RTX 3090  
-**Memory:** 40G  
-
-### Output Location
-```
-taming-transformers/logs/<timestamp>_chess_finetune/
-├── checkpoints/           # Model checkpoints (last.ckpt)
-├── images/val/            # Reconstruction visualizations
-└── configs/               # Saved configuration
-```
-
-After training, copy the final checkpoint:
-```bash
-cp taming-transformers/logs/<timestamp>/checkpoints/last.ckpt BBDM/results/VQGAN/last.ckpt
-```
-
----
-
-## 3️⃣ BBDM: Brownian Bridge Diffusion Model
-
-### Purpose
-BBDM performs **image-to-image translation** from synthetic chess images (A) to realistic chess images (B) using diffusion in latent space.
-
-### Data Format
-```
-friefeld_data/
-├── train/
-│   ├── A/     # Synthetic images (condition)
-│   └── B/     # Real images (target)
-├── val/
-│   ├── A/
-│   └── B/
-└── test/
-    ├── A/
-    └── B/
-```
-- Images should be **256×256 pixels**
-- Paired images must have **matching filenames** in A and B folders
-
-### Configuration
-Edit `BBDM/configs/Template-LBBDM-f16.yaml`:
+### 1. Configure `submission_config.yaml`
 
 ```yaml
-data:
-  dataset_name: 'your_dataset_name'
-  dataset_config:
-    dataset_path: 'friefeld_data'    # Relative to BBDM/
-    image_size: 256
+blender:
+  # Path to Blender executable (download from blender.org if needed)
+  exec_path: "./blender-5.0.1-linux-x64/blender"
+  # Path to the 3D chess set model
+  blend_file: "blender/chess-set.blend"
+  # Script that generates synthetic images from FEN
+  script_file: "src/blender/generate_synthtic_from_fen.py"
 
-model:
-  VQGAN:
-    params:
-      ckpt_path: 'results/VQGAN/last.ckpt'  # Your finetuned VQGAN
+models:
+  # BBDM config file (f4, f8, or f16)
+  bbdm_config: "src/bbdm/configs/f4_config.yaml"
+  # BBDM checkpoint - auto-downloads if just filename
+  bbdm_checkpoint: "latest_model_392.pth"
+  # VQGAN checkpoint - auto-downloads if just filename
+  vqgan_checkpoint: "vqgan_f4.ckpt"
 
-training:
-  n_epochs: 1000
-  save_interval: 2
-  sample_interval: 2
+evaluation:
+  # Enable SAM-based piece detection evaluation
+  enabled: true
 ```
 
-### Running BBDM Training
+**Key settings:**
+- `blender.exec_path` - Point to your Blender installation
+- `models.*_checkpoint` - Use filename only (auto-downloads) or full path to local file
+- `evaluation.enabled` - Set `false` to skip evaluation
+
+### 2. Run
+
 ```bash
-bash bbdm_sbatch.sh
+# Generate from FEN (default: starting position, white view)
+python submission.py
+
+# Custom FEN position
+python submission.py --fen "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1"
+
+# From black's perspective
+python submission.py --fen "8/5k2/3p4/1p1Pp2p/pP2Pp1P/P4P1K/8/8 b - - 0 1" --viewpoint black
+
+# Skip evaluation (faster)
+python submission.py --fen "..." --no-eval
 ```
 
-**Environment:** `roni`  
-**GPU:** RTX 3090  
-**Memory:** 20G  
+### Command Line Arguments
 
-### Resume Training
-Edit `BBDM/main.py` (uncomment lines 44-45):
-```python
-args.resume_model = os.path.join(os.getcwd(), 'results/.../checkpoint/latest_model_XXX.pth')
-args.resume_optim = os.path.join(os.getcwd(), 'results/.../checkpoint/latest_optim_sche_XXX.pth')
-```
+| Argument | Description | Default |
+|----------|-------------|---------|
+| `--fen, -f` | FEN string for chess position | Starting position |
+| `--viewpoint, -v` | `white` or `black` perspective | `white` |
+| `--no-eval` | Skip evaluation step | `false` |
 
-### Output Location
-```
-BBDM/results/<dataset_name>/LBBDM-f16/
-├── checkpoint/
-│   ├── latest_model_XXX.pth      # Model weights
-│   └── latest_optim_sche_XXX.pth # Optimizer state
-├── sample/                        # Generated samples during training
-└── log/                           # TensorBoard logs
-```
+### Output
 
-### Testing / Inference
+Results saved to `./results/`:
+- `synthetic.png` - Blender-rendered synthetic image
+- `realistic.png` - BBDM-generated realistic image
+- `side_by_side.png` - Comparison of both
+- `predicted_grid.png` - Evaluation grid (if enabled)
+
+---
+
+## Training
+
+### Train VQGAN (Step 1)
+
 ```bash
-python main.py --config configs/Template-LBBDM-f16.yaml --sample_to_eval --gpu_ids 0 \
-    --resume_model path/to/model.pth
+# f4 architecture (recommended)
+python -m src.vqgan.main -c src/vqgan/configs/config_train.yaml --epochs 100
+
+# f16 architecture
+python -m src.vqgan.main -c src/vqgan/configs/config_train_f16.yaml --epochs 100
+```
+
+### Train BBDM (Step 2)
+
+```bash
+# f4 config (64×64 latent)
+python -m src.bbdm.main -c src/bbdm/configs/f4_config.yaml -t
+
+# f8 config (32×32 latent)
+python -m src.bbdm.main -c src/bbdm/configs/f8_config.yaml -t
+
+# f4 masked config
+python -m src.bbdm.main -c src/bbdm/configs/masked_config.yaml -t
+
+# Multi-GPU training
+python -m src.bbdm.main -c src/bbdm/configs/f8_config.yaml -t --gpu_ids 0,1,2,3
+
+# Resume training
+python -m src.bbdm.main -c src/bbdm/configs/f4_config.yaml -t \ --resume_model checkpoints/latest_model_392.pth
 ```
 
 ---
 
-## 📋 SLURM Quick Reference
+## Evaluation
 
-### Submit a job
 ```bash
-bash bbdm_sbatch.sh    # or run_sbatch.sh, sam_sbatch.sh
-```
-
-### Check job status
-```bash
-squeue -u $USER              # Your running jobs
-squeue                       # All jobs
-scancel <JOB_ID>             # Cancel a job
-```
-
-### View output logs
-```bash
-tail -f outputs/<job_name>.out      # Follow live output
-cat outputs/<job_name>.out          # View full output
-```
-
-### Interactive GPU session
-```bash
-srun --gpus=rtx_3090:1 --mem=20G --time=2:00:00 --pty bash
-```
-
-### Check GPU usage
-```bash
-nvidia-smi
-watch -n 1 nvidia-smi       # Auto-refresh every second
+# Evaluate with local dataset
+python -m src.evaluation.evaluate_model --dataset_path ./data/dataset --stage test --generated_dir ./results
 ```
 
 ---
 
-## 🔄 Git Quick Reference
+## Project Structure
 
-### Clone this repository
-```bash
-git clone https://github.com/RomiGandler/DeepLearning_project3.git
-cd DeepLearning_project3
 ```
-
-### Pull latest changes
-```bash
-git pull origin main
-```
-
-### Commit and push changes
-```bash
-git add -A
-git status                   # Review what will be committed
-git commit -m "Your message"
-git push origin main
-```
-
-### Check what's ignored
-```bash
-git status --ignored
+├── submission.py           # Main inference script
+├── submission_config.yaml  # Configuration
+├── checkpoints/            # Model weights (auto-downloaded)
+├── blender/                # Blender project file
+├── results/                # Output images
+└── src/
+    ├── bbdm/               # BBDM diffusion model
+    ├── vqgan/              # VQGAN autoencoder
+    ├── evaluation/         # SAM-based evaluation
+    ├── blender/            # Synthetic image generation
+    └── data/               # Dataset utilities & HF downloader
 ```
 
 ---
 
-## ⚠️ Important Notes
+## Requirements
 
-1. **Data is NOT in git** - Download/prepare data separately (see `.gitignore`)
-2. **Model weights are NOT in git** - Download pre-trained models as described above
-3. **Always check GPU availability** before submitting jobs
-4. **Monitor disk usage** - Training generates large checkpoint files
-
----
-
-## 📊 Recommended Training Order
-
-1. **Prepare data** using SAM scripts
-2. **Finetune VQGAN** on your chess images (~10-20 epochs)
-3. **Train BBDM** using the finetuned VQGAN checkpoint
-
----
-
-## 📧 Contact
-
-For questions about this project, contact the repository maintainers.
-
----
-
-## 📚 Citations
-
-```bibtex
-@inproceedings{li2023bbdm,
-  title={BBDM: Image-to-image translation with Brownian bridge diffusion models},
-  author={Li, Bo and Xue, Kaitao and Liu, Bin and Lai, Yu-Kun},
-  booktitle={Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition},
-  pages={1952--1961},
-  year={2023}
-}
-
-@misc{esser2020taming,
-  title={Taming Transformers for High-Resolution Image Synthesis}, 
-  author={Patrick Esser and Robin Rombach and Björn Ommer},
-  year={2020},
-  eprint={2012.09841},
-  archivePrefix={arXiv},
-  primaryClass={cs.CV}
-}
-```
-
+- Python 3.11
+- CUDA 12.1+ (for GPU)
+- Blender 5.0+ (for synthetic generation)
+- ~8GB GPU memory (inference), ~16GB (training)
