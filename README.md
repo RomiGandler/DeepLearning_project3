@@ -17,12 +17,13 @@ conda activate chess-proj
 
 ---
 
-## HuggingFace Resources
+## Data & Models
 
-| Resource | Repository |
-|----------|------------|
-| Models | [`roni-hershko/chess_model`](https://huggingface.co/roni-hershko/chess_model) |
-| Dataset | [`roni-hershko/chess_data`](https://huggingface.co/datasets/roni-hershko/chess_data) |
+| Resource | Location |
+|----------|----------|
+| Models | [`roni-hershko/chess_model`](https://huggingface.co/roni-hershko/chess_model) (HuggingFace) |
+| Dataset | [`roni-hershko/chess_data`](https://huggingface.co/datasets/roni-hershko/chess_data) (HuggingFace) |
+| Full Data Archive | [Google Drive](https://drive.google.com/drive/u/1/folders/1hjfmjmDeAmPB7TRIitV8vqELYtckigy1) |
 
 **Available checkpoints:** `vqgan_f4.ckpt`, `vqgan_f8.ckpt`, `latest_model_392.pth`, `sam3.pt`
 
