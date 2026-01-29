@@ -2,110 +2,156 @@ import os
 import subprocess
 import cv2
 import numpy as np
-import torch
-from torchvision import transforms
-from PIL import Image
-from scripts.crop_board import process_single_image
 import sys
 import yaml
-
-# Add BBDM to Python path
-sys.path.insert(0, "BBDM")
-from BBDM.utils import dict2namespace
-from BBDM.model.BrownianBridge.LatentBrownianBridgeModel import LatentBrownianBridgeModel
+import torch
+from PIL import Image
 
 # ==========================================
-# Paths and Model Setup (According to the computer environment)
+# Imports from src/ and scripts/
 # ==========================================
-BLENDER_EXEC = "/Applications/Blender.app/Contents/MacOS/Blender" # Path to your Blender executable
-BLEND_FILE = "blender/chess-set.blend" # Blender file with the chess set
-SCRIPT_FILE = "blender/generate_synthtic_from_fen.py" # The script we wrote earlier
+# Ensure current directory is in path
+sys.path.append(os.getcwd())
 
-# Device setup (GPU if available, otherwise CPU)
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-# ==========================================
-# Model Loading
-# ==========================================
-def load_bbdm_model():
-    """Load the trained LBBDM model for inference."""
-    
-    # Paths to your trained model
-    config_path = "results/all_data_f4/LBBDM-f4/checkpoint/config.yaml"
-    model_checkpoint = "results/all_data_f4/LBBDM-f4/checkpoint/last_model.pth"
-    # Alternative: use best model instead
-    # model_checkpoint = "results/all_data_f4/LBBDM-f4/checkpoint/top_model_epoch_84.pth"
-    
-    print(f"🔧 Loading LBBDM model from {model_checkpoint}...")
-    
-    # Load config (UnsafeLoader returns Namespace directly, no conversion needed)
-    with open(config_path, 'r') as f:
-        config = yaml.load(f, Loader=yaml.UnsafeLoader)
-    
-    # Update paths to be relative to current directory
-    config.model.VQGAN.params.ckpt_path = "results/VQGAN/last.ckpt"
-    
-    # Initialize model
-    model = LatentBrownianBridgeModel(config.model).to(device)
-    
-    # Load trained weights
-    checkpoint = torch.load(model_checkpoint, map_location=device)
-    model.load_state_dict(checkpoint['model'])
-    
-    # Set to evaluation mode
-    model.eval()
-    
-    print("✅ Model loaded successfully!")
-    return model, config
-
-# Load model once at startup
-bbdm_model, bbdm_config = load_bbdm_model()
+from src.bbdm.inference import BBDMPipeline
+from src.evaluation.evaluate_model import evaluate_single
+from src.evaluation.sam_grid_extractor import SAMGridExtractor
+from src.evaluation.data_saver import DataSaver
+from src.blender.crop_board import process_single_image
 
 # ==========================================
-# Loading Your Model (BBDM)
+# Helper Functions
+# ==========================================
+
+def _save_grid_visual(grid: np.ndarray, save_path: str, cell_size: int = 50):
+    """
+    Save a visual representation of the predicted grid.
+    Colors: Green=White piece, Red=Black piece, Yellow=Both (conflict), Black=Empty
+    """
+    board_size = grid.shape[1]
+    h, w = board_size * cell_size, board_size * cell_size
+    img = np.zeros((h, w, 3), dtype=np.uint8)
+    
+    for r in range(board_size):
+        for c in range(board_size):
+            y1, y2 = r * cell_size, (r + 1) * cell_size
+            x1, x2 = c * cell_size, (c + 1) * cell_size
+            
+            is_white = grid[0, r, c] > 0.5
+            is_black = grid[1, r, c] > 0.5
+            
+            if is_white and is_black:
+                color = (0, 255, 255)  # Yellow - conflict
+            elif is_white:
+                color = (0, 255, 0)    # Green - white piece
+            elif is_black:
+                color = (0, 0, 255)    # Red - black piece
+            else:
+                color = (0, 0, 0)      # Black - empty
+            
+            cv2.rectangle(img, (x1, y1), (x2, y2), color, -1)
+            cv2.rectangle(img, (x1, y1), (x2, y2), (50, 50, 50), 1)  # Grid lines
+    
+    cv2.imwrite(save_path, img)
+
+# ==========================================
+# Configuration Loading
+# ==========================================
+CONFIG_FILE = "submission_config.yaml"
+
+def load_config():
+    if not os.path.exists(CONFIG_FILE):
+        raise FileNotFoundError(f"Configuration file {CONFIG_FILE} not found!")
+    with open(CONFIG_FILE, 'r') as f:
+        return yaml.safe_load(f)
+
+# Global cache
+_PIPELINE = None
+_EXTRACTOR = None
+_CONFIG = None
+
+def get_config():
+    global _CONFIG
+    if _CONFIG is None:
+        _CONFIG = load_config()
+    return _CONFIG
+
+def get_pipeline():
+    global _PIPELINE
+    cfg = get_config()
+    if _PIPELINE is None:
+        print("🔧 Loading BBDM Pipeline...")
+        # Resolve paths relative to current working directory
+        _PIPELINE = BBDMPipeline(
+            config=cfg['models']['bbdm_config'],
+            bbdm_checkpoint=cfg['models']['bbdm_checkpoint'],
+            vqgan_checkpoint=cfg['models']['vqgan_checkpoint'],
+            device="cuda" if torch.cuda.is_available() else "cpu"
+        )
+    return _PIPELINE
+
+def get_extractor():
+    global _EXTRACTOR
+    if _EXTRACTOR is None:
+        print("🔧 Loading SAM Grid Extractor...")
+        _EXTRACTOR = SAMGridExtractor()
+    return _EXTRACTOR
+
+# ==========================================
+# Main Function
 # ==========================================
 
 def generate_chessboard_image(fen: str, viewpoint: str) -> None:
     """
     Generate synthetic and realistic chessboard images from a given FEN.
-    According to Project 3 specifications[cite: 436, 438].
+    Reads settings from submission_config.yaml but enforces output to ./results/
     """
+    cfg = get_config()
     
-    # 1. Check viewpoint validity
+    # 1. Validation
     if viewpoint not in ['white', 'black']:
         raise ValueError("viewpoint must be 'white' or 'black'")
         
+    # STRICT REQUIREMENT: Output must be in ./results/
     results_dir = "./results"
-    os.makedirs(results_dir, exist_ok=True) # [cite: 440, 446]
+    os.makedirs(results_dir, exist_ok=True)
 
-    # Final file paths [cite: 441, 443, 444]
     path_synthetic = os.path.join(results_dir, "synthetic.png")
     path_realistic = os.path.join(results_dir, "realistic.png")
     path_sbs = os.path.join(results_dir, "side_by_side.png")
 
     # ======================================================
-    # Step 1: Generate Synthetic Image (Using Blender) [cite: 441]
+    # Step 1: Generate Synthetic Image (Using Blender)
     # ======================================================
-    # Blender always generates from white's perspective
-    # We'll rotate 180° later if viewpoint is black
-
     print(f"🎨 Generating Synthetic Image for Viewpoint: {viewpoint}...")
     
+    blender_exec = cfg['blender']['exec_path']
+    blend_file = cfg['blender']['blend_file']
+    script_file = cfg['blender']['script_file']
+
     cmd = [
-        BLENDER_EXEC,
-        "-b", BLEND_FILE,
-        "-P", SCRIPT_FILE,
+        blender_exec,
+        "-b", blend_file,
+        "-P", script_file,
         "--",
         "--fen", fen,
         "--output_dir", results_dir,
-        "--output_name", "synthetic",  # Blender will add .png automatically
+        "--output_name", "synthetic",
     ]
     
     try:
-        # Run the command and suppress output (unless there's an error)
-        subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+        # Run Blender
+        result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+        print(result.stdout)
+        print(result.stderr)
     except subprocess.CalledProcessError as e:
+        
         print(f"❌ Error running Blender: {e}")
+        print(e.stdout)
+        print(e.stderr)
+        return
+    except FileNotFoundError:
+        print(f"❌ Blender executable not found at: {blender_exec}")
         return
 
     if not os.path.exists(path_synthetic):
@@ -113,100 +159,154 @@ def generate_chessboard_image(fen: str, viewpoint: str) -> None:
         return
 
     # ======================================================
-    # Step 1.5: Crop the Synthetic Image to Board Area Only
+    # Step 1.5: Crop the Synthetic Image
     # ======================================================
     print("✂️  Cropping synthetic image to chessboard area...")
-    
-    # Use the existing crop function (overwrites the original by default)
-    process_single_image(path_synthetic, output_dir=None, preview_mode=False)
+    try:
+        # Overwrites the original by default as per original script behavior
+        process_single_image(path_synthetic, output_dir=None, preview_mode=False)
+    except Exception as e:
+        print(f"⚠️  Cropping failed: {e}")
 
     # ======================================================
-    # Step 2: Generate Realistic Image (Using Your Model) [cite: 443]
+    # Step 2: Generate Realistic Image (Using src/ Pipeline)
     # ======================================================
-    print("🤖 Generating Realistic Image using Neural Network...")
+    print("🤖 Generating Realistic Image...")
     
-    # Load the synthetic image
-    syn_image = Image.open(path_synthetic).convert('RGB')
-
-    # Pre-processing 
-    transform = transforms.Compose([
-        transforms.Resize((256, 256)), # or the size your model expects
-        transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-    ])
-    
-    input_tensor = transform(syn_image).unsqueeze(0).to(device)
-
-    # Run the model (Inference)
-    with torch.no_grad():
-        # === Use your trained BBDM model ===
-        # The model expects input in range [-1, 1] which we already have
-        # bbdm_model.sample() takes the synthetic image and returns realistic version
-        fake_image_tensor = bbdm_model.sample(
-            input_tensor, 
-            clip_denoised=bbdm_config.testing.clip_denoised,
-            sample_mid_step=False
+    try:
+        pipeline = get_pipeline()
+        
+        real_img_pil = pipeline.generate_from_path(
+            path_synthetic, 
+            clip_denoised=pipeline.config.testing.clip_denoised
         )
-        # =================================================================
-
-    # Post-processing
-    fake_image = fake_image_tensor.squeeze().cpu().detach().numpy()
-    fake_image = (fake_image + 1) / 2.0 * 255.0 # Denormalize
-    fake_image = fake_image.transpose(1, 2, 0).astype(np.uint8)
-
-    # Save the realistic image (ensure it matches the synthetic size if needed)
-    # Here we save it in the original size of the synthetic for safety
-    orig_w, orig_h = syn_image.size
-    real_img_pil = Image.fromarray(fake_image).resize((orig_w, orig_h))
-    real_img_pil.save(path_realistic)
+        real_img_pil.save(path_realistic)
+    except Exception as e:
+        print(f"❌ Error generating realistic image: {e}")
+        return
 
     # ======================================================
-    # Step 2.5: Rotate Images if Viewpoint is Black
+    # Optional: Evaluation
+    # ======================================================
+    # Check config or env var (DISABLE_EVALUATION takes priority)
+    if os.environ.get("DISABLE_EVALUATION") == "1":
+        should_eval = False
+    else:
+        should_eval = cfg.get('evaluation', {}).get('enabled', False) or \
+                      os.environ.get("ENABLE_EVALUATION") == "1"
+
+    if should_eval:
+        print("📊 Running Evaluation on generated image...")
+        try:
+            extractor = get_extractor()
+            # Reload from disk to ensure we evaluate exactly what was saved
+            real_img_cv2 = cv2.imread(path_realistic)
+            if real_img_cv2 is None:
+                 raise ValueError("Could not read realistic image for evaluation")
+            
+            # Use DataSaver to save predicted grid and other debug images
+            saver = DataSaver(results_dir)
+            
+            metrics = evaluate_single(
+                image=real_img_cv2,
+                fen=fen,
+                file_id="generated_eval",
+                extractor=extractor,
+                saver=saver
+            )
+            
+            # Also save predicted grid visualization directly to results folder
+            pred_grid = metrics['pred_grid']
+            path_pred_grid = os.path.join(results_dir, "predicted_grid.png")
+            _save_grid_visual(pred_grid, path_pred_grid)
+            
+            print(f"   ✅ Cell Accuracy: {metrics['cell_accuracy']:.2%}")
+            print(f"   💾 Predicted grid saved to: {path_pred_grid}")
+            print(f"   📁 Detailed debug files in: {os.path.join(saver.debug_dir, 'generated_eval')}/")
+        except Exception as e:
+            print(f"   ⚠️ Evaluation failed: {e}")
+
+    # ======================================================
+    # Step 3: Rotate Images if Viewpoint is Black
     # ======================================================
     if viewpoint == 'black':
         print("🔄 Rotating images 180 degrees (black viewpoint)...")
         
-        # Rotate the synthetic image
-        img_syn_to_rotate = cv2.imread(path_synthetic)
-        rotated_syn = cv2.rotate(img_syn_to_rotate, cv2.ROTATE_180)
-        cv2.imwrite(path_synthetic, rotated_syn)
-        print("✅ Synthetic image rotated and saved.")
-        
-        # Rotate the realistic image
-        img_real_to_rotate = cv2.imread(path_realistic)
-        rotated_real = cv2.rotate(img_real_to_rotate, cv2.ROTATE_180)
-        cv2.imwrite(path_realistic, rotated_real)
-        print("✅ Realistic image rotated and saved.")
+        for p in [path_synthetic, path_realistic]:
+            img = cv2.imread(p)
+            if img is not None:
+                img = cv2.rotate(img, cv2.ROTATE_180)
+                cv2.imwrite(p, img)
+            else:
+                print(f"⚠️  Could not rotate {p}: Image not found or invalid.")
 
     # ======================================================
-    # Step 3: Create Comparison Image (Side-by-Side) [cite: 444]
+    # Step 4: Create Side-by-Side Comparison
     # ======================================================
     print("🖼️ Creating Side-by-Side comparison...")
     
     img_syn = cv2.imread(path_synthetic)
     img_real = cv2.imread(path_realistic)
 
-    # Ensure same sizes
-    if img_syn.shape != img_real.shape:
-        img_real = cv2.resize(img_real, (img_syn.shape[1], img_syn.shape[0]))
+    if img_syn is not None and img_real is not None:
+        if img_syn.shape != img_real.shape:
+            # Resize realistic to match synthetic height/width
+            img_real = cv2.resize(img_real, (img_syn.shape[1], img_syn.shape[0]))
+        
+        sbs_image = np.hstack((img_syn, img_real))
+        cv2.imwrite(path_sbs, sbs_image)
+        print("✅ All images saved successfully in ./results/")
+    else:
+        print("❌ Error reading images for side-by-side.")
 
-    # Horizontal stacking (Left: Synthetic, Right: Realistic)
-    sbs_image = np.hstack((img_syn, img_real))
-
-    # Save
-    cv2.imwrite(path_sbs, sbs_image)
-    
-    print("✅ All images saved successfully in ./results/")
-
-# ==========================================
-# Self-Check (To Ensure It's Working)
-# ==========================================
 if __name__ == "__main__":
-    # Example for Sicilian Opening from Black's Perspective
-    test_fen = "8/5k2/3p4/1p1Pp2p/pP2Pp1P/P4P1K/8/8 b - - 0 1"
-    test_view = "white" 
+    import argparse
+    
+    parser = argparse.ArgumentParser(
+        description="Generate realistic chessboard images from FEN notation",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Generate from starting position (white view)
+  python submission.py --fen "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+  
+  # Generate from black's perspective
+  python submission.py --fen "8/5k2/3p4/1p1Pp2p/pP2Pp1P/P4P1K/8/8 b - - 0 1" --viewpoint black
+  
+  # Disable evaluation
+  python submission.py --fen "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1" --no-eval
+        """
+    )
+    
+    parser.add_argument(
+        "--fen", "-f",
+        type=str,
+        default="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        help="FEN string describing the chess position (default: starting position)"
+    )
+    parser.add_argument(
+        "--viewpoint", "-v",
+        type=str,
+        choices=["white", "black"],
+        default="white",
+        help="Viewpoint: 'white' or 'black' (default: white)"
+    )
+    parser.add_argument(
+        "--no-eval",
+        action="store_true",
+        help="Disable evaluation (overrides config)"
+    )
+    
+    args = parser.parse_args()
+    
+    # Override evaluation setting if --no-eval flag is set
+    if args.no_eval:
+        os.environ["DISABLE_EVALUATION"] = "1"
     
     try:
-        generate_chessboard_image(test_fen, test_view)
+        print(f"🎯 FEN: {args.fen}")
+        print(f"👁️  Viewpoint: {args.viewpoint}")
+        generate_chessboard_image(args.fen, args.viewpoint)
     except Exception as e:
-        print(f"FAILED: {e}")
+        print(f"❌ FAILED: {e}")
+        raise
