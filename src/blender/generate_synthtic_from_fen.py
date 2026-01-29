@@ -1,9 +1,3 @@
-"""
-BBDN Data Generator (Calibrated 1:1) - FIX: Absolute Paths
-File: blender/generate_synthtic_from_fen.py
-==========================================================
-"""
-
 import bpy
 import math
 from mathutils import Vector
