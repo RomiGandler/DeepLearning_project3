@@ -66,6 +66,8 @@ BBDM/pgn_data/
 BBDM/chess_data/
 BBDM/data_10.01_no_hands/
 chess_data/
+src/data/dataset/
+src/data/dataset_copy/
 
 # Training outputs and checkpoints
 BBDM/results/
@@ -93,6 +95,9 @@ taming-transformers/test_synt/
 # -----------------------------------------------------------------------------
 outputs/
 new_train/
+/logs/
+/checkpoints/
+/runs/
 
 # -----------------------------------------------------------------------------
 # CycleGAN Data (if any)
@@ -147,3 +152,13 @@ controlNet/outputs/
 .bbdm_sbatch.sh
 .lbbdm_sbatch.sh
 .mlbbdm_sbatch.sh
+
+# SLURM job scripts
+*_sbatch.sh
+run_sbatch.sh
+
+# Blender installation
+blender-*/
+
+# HuggingFace cache
+**/.cache/
