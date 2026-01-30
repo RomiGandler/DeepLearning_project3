@@ -93,9 +93,10 @@ def parse_args_and_config():
         )
 
     bbdm_ckpt = getattr(namespace_config.model, "model_load_path", None)
-    if bbdm_ckpt is None or str(bbdm_ckpt).strip() == "":
+    # Only require BBDM checkpoint for inference, not for training from scratch
+    if not args.train and (bbdm_ckpt is None or str(bbdm_ckpt).strip() == ""):
         raise ValueError(
-            "You must set `model.model_load_path` in the config (filename or path). "
+            "You must set `model.model_load_path` in the config for inference. "
             "It will be downloaded into `./checkpoints/` if missing."
         )
 
