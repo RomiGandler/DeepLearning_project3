@@ -1,5 +1,5 @@
 import numpy as np
-import albumentations
+from PIL import Image
 from typing import Dict, Any
 
 from src.data.base_dataloader import BaseChessDataset
@@ -38,9 +38,6 @@ class VQGANChessDataset(BaseChessDataset):
         
         # Build VQGAN-specific paths list
         self._build_paths()
-        
-        # Setup albumentations preprocessor
-        self._setup_preprocessor()
     
     def _build_paths(self):
         """Build paths list based on image_key setting."""
@@ -53,25 +50,13 @@ class VQGANChessDataset(BaseChessDataset):
         
         self._vqgan_length = len(self.paths)
     
-    def _setup_preprocessor(self):
-        """Setup albumentations preprocessor (VQGAN style)."""
-        if self._size and self._size > 0:
-            self.rescaler = albumentations.SmallestMaxSize(max_size=self._size)
-            if self.random_crop:
-                self.cropper = albumentations.RandomCrop(height=self._size, width=self._size)
-            else:
-                self.cropper = albumentations.CenterCrop(height=self._size, width=self._size)
-            self.preprocessor = albumentations.Compose([self.rescaler, self.cropper])
-        else:
-            self.preprocessor = lambda **kwargs: kwargs
-    
     def __len__(self):
         return self._vqgan_length
     
     def _preprocess_image(self, image) -> np.ndarray:
         """Preprocess PIL image VQGAN-style."""
+        image = image.resize((self._size, self._size), Image.BILINEAR)
         arr = np.array(image).astype(np.uint8)
-        arr = self.preprocessor(image=arr)["image"]
         # VQGAN normalization: [0, 255] -> [-1, 1]
         return (arr / 127.5 - 1.0).astype(np.float32)
     
