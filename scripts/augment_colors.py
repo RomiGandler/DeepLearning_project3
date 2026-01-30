@@ -3,11 +3,19 @@
 Color augmentation script for chess board images.
 
 Uses SAM to detect chess pieces, clusters them into black/white groups,
-then swaps the colors by replacing each piece with the opposite cluster's centroid color.
+then swaps the colors using Reinhard color transfer to preserve texture and edges.
+
+The transfer works by:
+1. Computing mean and std RGB for each cluster (black/white pieces)
+2. For each pixel: offset = (pixel - source_mean) / source_std
+3. New pixel = target_mean + offset * target_std
+
+This preserves the relative color variations (texture, edges, shading) within
+each piece while shifting the overall color distribution to the opposite cluster.
 
 Output:
 1. identity - original image
-2. colors_swapped - black pieces become white-colored and vice versa
+2. colors_swapped - black pieces become white-colored and vice versa (texture preserved)
 """
 
 from pathlib import Path
@@ -90,13 +98,13 @@ def cluster_piece_colors_2means(
         return labels, c0, c1
 
 
-def compute_cluster_rgb_centroids(
+def compute_cluster_rgb_stats(
     masks: np.ndarray,
     labels: np.ndarray,
     rgb_image: np.ndarray,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
-    Compute mean RGB color for each cluster.
+    Compute mean and std RGB color for each cluster (for Reinhard color transfer).
     
     Args:
         masks: Boolean mask array of shape (N, H, W)
@@ -104,7 +112,7 @@ def compute_cluster_rgb_centroids(
         rgb_image: RGB image (H, W, 3)
         
     Returns:
-        Tuple of (black_centroid, white_centroid) each as RGB array (3,)
+        Tuple of (black_mean, black_std, white_mean, white_std) each as RGB array (3,)
     """
     black_pixels = []
     white_pixels = []
@@ -118,49 +126,78 @@ def compute_cluster_rgb_centroids(
         else:  # white cluster
             white_pixels.append(pixels)
     
-    # Compute mean RGB for each cluster
+    # Compute mean and std RGB for each cluster
     if black_pixels:
-        black_centroid = np.mean(np.concatenate(black_pixels, axis=0), axis=0)
+        black_all = np.concatenate(black_pixels, axis=0).astype(np.float32)
+        black_mean = np.mean(black_all, axis=0)
+        black_std = np.std(black_all, axis=0)
+        black_std = np.maximum(black_std, 1.0)  # avoid division by zero
     else:
-        black_centroid = np.array([50, 50, 50], dtype=np.float32)  # fallback dark
+        black_mean = np.array([50, 50, 50], dtype=np.float32)
+        black_std = np.array([20, 20, 20], dtype=np.float32)
     
     if white_pixels:
-        white_centroid = np.mean(np.concatenate(white_pixels, axis=0), axis=0)
+        white_all = np.concatenate(white_pixels, axis=0).astype(np.float32)
+        white_mean = np.mean(white_all, axis=0)
+        white_std = np.std(white_all, axis=0)
+        white_std = np.maximum(white_std, 1.0)  # avoid division by zero
     else:
-        white_centroid = np.array([200, 200, 200], dtype=np.float32)  # fallback light
+        white_mean = np.array([200, 200, 200], dtype=np.float32)
+        white_std = np.array([20, 20, 20], dtype=np.float32)
     
-    return black_centroid.astype(np.uint8), white_centroid.astype(np.uint8)
+    return black_mean, black_std, white_mean, white_std
 
 
 def swap_piece_colors(
     image: np.ndarray,
     masks: np.ndarray,
     labels: np.ndarray,
-    black_centroid: np.ndarray,
-    white_centroid: np.ndarray,
+    black_mean: np.ndarray,
+    black_std: np.ndarray,
+    white_mean: np.ndarray,
+    white_std: np.ndarray,
 ) -> np.ndarray:
     """
-    Create a new image with piece colors swapped.
-    Black pieces get white centroid color and vice versa.
+    Create a new image with piece colors swapped using Reinhard color transfer.
+    
+    Preserves texture and edges by transferring each pixel's deviation from its
+    cluster mean to the target cluster, scaled by the std ratio.
+    
+    For a white piece pixel:
+        offset = (pixel - white_mean) / white_std
+        new_pixel = black_mean + offset * black_std
     
     Args:
         image: RGB image (H, W, 3)
         masks: Boolean mask array of shape (N, H, W)
         labels: Array of 0 (black) or 1 (white) per mask
-        black_centroid: RGB color of black cluster
-        white_centroid: RGB color of white cluster
+        black_mean: Mean RGB of black cluster (3,)
+        black_std: Std RGB of black cluster (3,)
+        white_mean: Mean RGB of white cluster (3,)
+        white_std: Std RGB of white cluster (3,)
         
     Returns:
-        New image with swapped colors
+        New image with texture-preserving swapped colors
     """
-    result = image.copy()
+    result = image.astype(np.float32).copy()
     
     for mask, label in zip(masks, labels):
-        if label == 0:  # black piece -> paint with white centroid
-            result[mask] = white_centroid
-        else:  # white piece -> paint with black centroid
-            result[mask] = black_centroid
+        pixels = result[mask]  # Shape: (num_pixels, 3)
+        
+        if label == 0:
+            # Black piece -> transfer to white color distribution
+            # Normalize by black stats, then apply white stats
+            offset = (pixels - black_mean) / black_std
+            new_pixels = white_mean + offset * white_std
+        else:
+            # White piece -> transfer to black color distribution
+            offset = (pixels - white_mean) / white_std
+            new_pixels = black_mean + offset * black_std
+        
+        result[mask] = new_pixels
     
+    # Clip to valid range and convert back to uint8
+    result = np.clip(result, 0, 255).astype(np.uint8)
     return result
 
 
@@ -214,13 +251,17 @@ class SAMColorSwapper:
         n_white = np.sum(labels == 1)
         print(f"Clustered: {n_black} black, {n_white} white pieces")
         
-        # Compute RGB centroids
-        black_centroid, white_centroid = compute_cluster_rgb_centroids(masks, labels, rgb)
-        print(f"Black centroid RGB: {black_centroid}")
-        print(f"White centroid RGB: {white_centroid}")
+        # Compute RGB stats for Reinhard color transfer
+        black_mean, black_std, white_mean, white_std = compute_cluster_rgb_stats(
+            masks, labels, rgb
+        )
+        print(f"Black cluster - mean: {black_mean.astype(int)}, std: {black_std.astype(int)}")
+        print(f"White cluster - mean: {white_mean.astype(int)}, std: {white_std.astype(int)}")
         
-        # Create swapped image
-        swapped = swap_piece_colors(rgb, masks, labels, black_centroid, white_centroid)
+        # Create swapped image with texture-preserving color transfer
+        swapped = swap_piece_colors(
+            rgb, masks, labels, black_mean, black_std, white_mean, white_std
+        )
         
         return {"identity": rgb, "colors_swapped": swapped}
 
