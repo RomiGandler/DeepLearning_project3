@@ -48,48 +48,57 @@ def get_augmentations(img: np.ndarray) -> dict[str, np.ndarray]:
     return augmentations
 
 
-def main():
-    # === MODIFY THESE ===
-    IMAGE_PATH = "/Users/avinoamd/Downloads/game12_frame_013912.png"  # Path to the input chess board image
-    OUTPUT_DIR = None  # Output directory (default: directory named after the image stem)
-    FORMAT = None      # Output format (default: same as input)
-    # ====================
-
-    # Load image
-    image_path = Path(IMAGE_PATH)
-    if not image_path.exists():
-        raise FileNotFoundError(f"Image not found: {image_path}")
-    
+def process_image(image_path: Path, output_dir: Path) -> None:
+    """Process a single image and save all geometric augmentations."""
     img = Image.open(image_path)
     img_array = np.array(img)
     
-    # Determine output directory
-    if OUTPUT_DIR:
-        output_dir = Path(OUTPUT_DIR)
-    else:
-        output_dir = image_path.parent / image_path.stem
-    
-    output_dir.mkdir(parents=True, exist_ok=True)
+    # Create output directory for this image
+    image_output_dir = output_dir / image_path.stem
+    image_output_dir.mkdir(parents=True, exist_ok=True)
     
     # Determine output format
-    output_format = FORMAT or image_path.suffix.lstrip(".")
+    output_format = image_path.suffix.lstrip(".")
     if output_format.lower() == "jpg":
         output_format = "jpeg"
     
     # Generate and save augmentations
     augmentations = get_augmentations(img_array)
     
-    print(f"Input image: {image_path}")
-    print(f"Output directory: {output_dir}")
-    print(f"Generating {len(augmentations)} augmentations...")
+    print(f"  Input: {image_path.name}")
+    print(f"  Output: {image_output_dir}")
+    print(f"  Generating {len(augmentations)} augmentations...")
     
     for name, aug_array in augmentations.items():
         aug_img = Image.fromarray(aug_array)
-        output_path = output_dir / f"{name}.{output_format}"
+        output_path = image_output_dir / f"{name}.{output_format}"
         aug_img.save(output_path)
-        print(f"  Saved: {output_path.name}")
     
-    print("Done!")
+    print(f"  Done!")
+
+
+def main():
+    from scripts.sample_images_path import images_path
+    
+    # Output directory: ./augmentations/geo/
+    output_dir = Path("augmentations") / "geo"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    print(f"Processing {len(images_path)} images...")
+    print(f"Output directory: {output_dir.resolve()}")
+    print()
+    
+    for i, img_path_str in enumerate(images_path, 1):
+        image_path = Path(img_path_str)
+        if not image_path.exists():
+            print(f"[{i}/{len(images_path)}] WARNING: Image not found: {image_path}")
+            continue
+        
+        print(f"[{i}/{len(images_path)}]")
+        process_image(image_path, output_dir)
+        print()
+    
+    print("All done!")
 
 
 if __name__ == "__main__":

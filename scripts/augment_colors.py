@@ -266,51 +266,66 @@ class SAMColorSwapper:
         return {"identity": rgb, "colors_swapped": swapped}
 
 
-def main():
-    # === MODIFY THESE ===
-    IMAGE_PATH = None  # Path to the input chess board image
-    OUTPUT_DIR = None  # Output directory (default: directory named after image stem + "_colors")
-    FORMAT = None      # Output format (default: same as input)
-    # ====================
-
-    # Load image
-    image_path = Path(IMAGE_PATH)
-    if not image_path.exists():
-        raise FileNotFoundError(f"Image not found: {image_path}")
-    
+def process_image(
+    image_path: Path,
+    output_dir: Path,
+    swapper: SAMColorSwapper,
+) -> None:
+    """Process a single image and save color augmentations."""
     image_bgr = cv2.imread(str(image_path))
     if image_bgr is None:
         raise ValueError(f"Failed to load image: {image_path}")
     
-    # Determine output directory
-    if OUTPUT_DIR:
-        output_dir = Path(OUTPUT_DIR)
-    else:
-        output_dir = image_path.parent / f"{image_path.stem}_colors"
-    
-    output_dir.mkdir(parents=True, exist_ok=True)
+    # Create output directory for this image
+    image_output_dir = output_dir / image_path.stem
+    image_output_dir.mkdir(parents=True, exist_ok=True)
     
     # Determine output format
-    output_format = FORMAT or image_path.suffix.lstrip(".")
+    output_format = image_path.suffix.lstrip(".")
     if output_format.lower() == "jpg":
         output_format = "jpeg"
     
-    # Process
-    print(f"Input image: {image_path}")
-    print(f"Output directory: {output_dir}")
+    print(f"  Input: {image_path.name}")
+    print(f"  Output: {image_output_dir}")
     
-    swapper = SAMColorSwapper()
     results = swapper.process(image_bgr)
     
-    print(f"Generating {len(results)} augmentations...")
+    print(f"  Saving {len(results)} augmentations...")
     for name, rgb_array in results.items():
         # Convert back to BGR for OpenCV saving
         bgr_array = cv2.cvtColor(rgb_array, cv2.COLOR_RGB2BGR)
-        output_path = output_dir / f"{name}.{output_format}"
+        output_path = image_output_dir / f"{name}.{output_format}"
         cv2.imwrite(str(output_path), bgr_array)
-        print(f"  Saved: {output_path.name}")
     
-    print("Done!")
+    print(f"  Done!")
+
+
+def main():
+    from scripts.sample_images_path import images_path
+    
+    # Output directory: ./augmentations/colors/
+    output_dir = Path("augmentations") / "colors"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    print(f"Processing {len(images_path)} images...")
+    print(f"Output directory: {output_dir.resolve()}")
+    print()
+    
+    # Initialize SAM once (expensive)
+    swapper = SAMColorSwapper()
+    print()
+    
+    for i, img_path_str in enumerate(images_path, 1):
+        image_path = Path(img_path_str)
+        if not image_path.exists():
+            print(f"[{i}/{len(images_path)}] WARNING: Image not found: {image_path}")
+            continue
+        
+        print(f"[{i}/{len(images_path)}]")
+        process_image(image_path, output_dir, swapper)
+        print()
+    
+    print("All done!")
 
 
 if __name__ == "__main__":

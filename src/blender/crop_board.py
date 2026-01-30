@@ -9,8 +9,8 @@ import glob
 # Adjust these values until the red rectangle (in preview mode)
 # perfectly aligns with the chessboard area only (without frame or background).
 
-CROP_Y_START = 65   # Top boundary
-CROP_Y_END   = 735  # Bottom boundary
+CROP_Y_START = 75   # Top boundary
+CROP_Y_END   = 725  # Bottom boundary
 
 CROP_X_START = 75   # Left boundary
 CROP_X_END   = 725  # Right boundary
