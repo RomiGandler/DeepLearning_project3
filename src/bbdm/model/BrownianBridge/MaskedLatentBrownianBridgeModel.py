@@ -68,6 +68,8 @@ class MaskedLatentBrownianBridgeModel(BrownianBridgeModel):
             gt_latent = self.downsample_mask(gt_mask, x_latent.shape[2])
             if gt_latent.shape[1] > 1:
                 gt_latent = gt_latent[:, 0:1, :, :]
+        else:
+            raise ValueError("MaskedLatentBrownianBridgeModel requires gt_mask to be provided")
         context = self.get_cond_stage_context(x_cond)
         return self.super_forward(x_latent.detach(), x_cond_latent.detach(), mask_x=gt_latent.detach(), context=context)
     
