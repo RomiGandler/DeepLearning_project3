@@ -8,9 +8,10 @@ blender:
 
 models:
   # Paths to your trained models (relative to project root)
-  bbdm_config: "src/bbdm/configs/f4_config.yaml"
+  # bbdm_config is optional for new checkpoints (config embedded in checkpoint)
+  bbdm_config: "/home/avinoamd/roni/src/bbdm/configs/f4_config.yaml"
   bbdm_checkpoint: "latest_model_392.pth"
-  vqgan_checkpoint: "vqgan_f4.ckpt"
+  # vqgan_checkpoint is optional for new checkpoints (VQGAN weights included in BBDM checkpoint)
 
 evaluation:
   # Set to true to run evaluation automatically

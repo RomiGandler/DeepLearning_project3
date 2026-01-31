@@ -34,9 +34,11 @@ class BaseChessDataset(Dataset, ABC):
     Directory structure expected:
         dataset_path/
         ├── train/
-        │   ├── A/          # Condition images
-        │   ├── B/          # Target images
-        │   └── masks/      # Optional masks
+        │   ├── A/              # Condition images
+        │   ├── B/              # Target images
+        │   ├── masks/          # Optional single-channel masks (legacy)
+        │   ├── A_mask_white/   # Optional white piece masks
+        │   └── A_mask_black/   # Optional black piece masks
         ├── val/
         └── test/
     """
@@ -47,13 +49,15 @@ class BaseChessDataset(Dataset, ABC):
         stage: str = 'train',
         image_size: int = 256,
         use_masks: bool = True,
+        use_mask_guidance: bool = False,
     ):
         """
         Args:
             dataset_path: Local path to dataset. If None, downloads from HuggingFace.
             stage: One of 'train', 'val', 'test'
             image_size: Target image size (square)
-            use_masks: Whether to load mask images
+            use_masks: Whether to load single-channel mask images (legacy)
+            use_mask_guidance: Whether to load white/black piece masks for guidance
         """
         super().__init__()
         
@@ -63,6 +67,7 @@ class BaseChessDataset(Dataset, ABC):
         self.stage = stage
         self.image_size = image_size
         self.use_masks = use_masks
+        self.use_mask_guidance = use_mask_guidance
         
         # Load and validate paths
         self._load_paths()
@@ -94,7 +99,7 @@ class BaseChessDataset(Dataset, ABC):
         self.paths_A = get_image_paths_from_dir(str(stage_path / 'A'))
         self.paths_B = get_image_paths_from_dir(str(stage_path / 'B'))
         
-        # Optional masks - raise error if expected but missing
+        # Optional single-channel masks (legacy)
         mask_dir = stage_path / 'masks'
         if self.use_masks:
             if not mask_dir.exists():
@@ -106,6 +111,20 @@ class BaseChessDataset(Dataset, ABC):
         else:
             self.paths_masks = None
         
+        # Optional white/black piece masks for guidance
+        self.paths_mask_white = None
+        self.paths_mask_black = None
+        if self.use_mask_guidance:
+            white_dir = stage_path / 'A_mask_white'
+            black_dir = stage_path / 'A_mask_black'
+            if not white_dir.exists() or not black_dir.exists():
+                raise FileNotFoundError(
+                    f"use_mask_guidance=True but A_mask_white/ or A_mask_black/ not found in {stage_path}. "
+                    f"Either set use_mask_guidance=False or create both directories."
+                )
+            self.paths_mask_white = get_image_paths_from_dir(str(white_dir))
+            self.paths_mask_black = get_image_paths_from_dir(str(black_dir))
+        
         # Validate alignment
         assert len(self.paths_A) == len(self.paths_B), \
             f"Mismatch: {len(self.paths_A)} A images vs {len(self.paths_B)} B images"
@@ -114,6 +133,12 @@ class BaseChessDataset(Dataset, ABC):
         if self.paths_masks:
             assert len(self.paths_A) == len(self.paths_masks), \
                 f"Mismatch: {len(self.paths_A)} images vs {len(self.paths_masks)} masks"
+        
+        if self.paths_mask_white:
+            assert len(self.paths_A) == len(self.paths_mask_white), \
+                f"Mismatch: {len(self.paths_A)} images vs {len(self.paths_mask_white)} white masks"
+            assert len(self.paths_A) == len(self.paths_mask_black), \
+                f"Mismatch: {len(self.paths_A)} images vs {len(self.paths_mask_black)} black masks"
         
         self._base_length = len(self.paths_A)
     
@@ -148,6 +173,8 @@ class BaseChessDataset(Dataset, ABC):
                 - 'path_B': full path to B image
                 - 'mask' (if use_masks): PIL image from masks/ directory
                 - 'filename_mask' (if use_masks): stem of mask filename
+                - 'mask_white' (if use_mask_guidance): PIL image of white piece mask
+                - 'mask_black' (if use_mask_guidance): PIL image of black piece mask
         """
         result = {
             'A': self._load_image(self.paths_A[index]),
@@ -161,6 +188,10 @@ class BaseChessDataset(Dataset, ABC):
         if self.use_masks and self.paths_masks:
             result['mask'] = self._load_mask(self.paths_masks[index])
             result['filename_mask'] = Path(self.paths_masks[index]).stem
+        
+        if self.use_mask_guidance and self.paths_mask_white:
+            result['mask_white'] = self._load_mask(self.paths_mask_white[index])
+            result['mask_black'] = self._load_mask(self.paths_mask_black[index])
         
         return result
     

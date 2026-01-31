@@ -4,6 +4,7 @@ Augmentation utilities for chess images.
 Modules:
 - fen_utils: FEN string manipulation (color inversion)
 - color_swap: SAM-based piece color swapping (requires ultralytics)
+- mask_extraction: SAM-based mask extraction (requires ultralytics)
 - geometric: D4 group geometric transformations
 
 Usage:
@@ -11,8 +12,9 @@ Usage:
     from etl.augmentations.fen_utils import invert_fen_colors
     from etl.augmentations.geometric import get_transforms, apply_transform
     
-    # SAM-based color swap (requires ultralytics + torch)
+    # SAM-based operations (requires ultralytics + torch)
     from etl.augmentations.color_swap import SAMColorSwapper
+    from etl.augmentations.mask_extraction import SAMMaskExtractor
 """
 
 # Only expose lightweight utilities by default
