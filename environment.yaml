@@ -25,3 +25,7 @@ dependencies:
     - opencv-python
     - bpy
     - mathutils
+    - einops
+    - scipy
+    - numpy
+    - matplotlib

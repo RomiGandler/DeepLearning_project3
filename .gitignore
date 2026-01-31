@@ -52,7 +52,9 @@ Thumbs.db
 # -----------------------------------------------------------------------------
 # Blender Files (can be 500MB+)
 # -----------------------------------------------------------------------------
-**/*.blend
+# Allow specific chess set blend file
+!/blender/chess-set.blend
+
 **/*.blend1
 **/*.blend~
 **/*.blend@
