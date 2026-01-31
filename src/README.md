@@ -28,7 +28,7 @@ src/
 
 ```bash
 # Create conda environment
-conda env create -f src/environment.yaml
+conda env create -f environment.yaml
 conda activate chess-proj
 ```
 
