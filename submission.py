@@ -83,9 +83,9 @@ def get_pipeline():
         print("🔧 Loading BBDM Pipeline...")
         # Resolve paths relative to current working directory
         _PIPELINE = BBDMPipeline(
-            config=cfg['models']['bbdm_config'],
+            config=cfg['models'].get('bbdm_config'),
             bbdm_checkpoint=cfg['models']['bbdm_checkpoint'],
-            vqgan_checkpoint=cfg['models']['vqgan_checkpoint'],
+            vqgan_checkpoint=cfg['models'].get('vqgan_checkpoint'),  # Optional for new checkpoints
             device="cuda" if torch.cuda.is_available() else "cpu"
         )
     return _PIPELINE
