@@ -22,6 +22,7 @@ branch = "roni-side-quest"
 local_folder = "/home/avinoamd/roni/src/data/dataset"
 
 api.delete_branch(repo_id=repo_id, branch=branch, repo_type="dataset")
+api.create_branch(repo_id=repo_id, branch=branch, repo_type="dataset")
 
 print("2. Pushing fresh (Server will skip existing blobs)...")
 upload_large_folder(
