@@ -10,7 +10,7 @@ VQGAN encodes 256×256 images into a compressed latent representation using vect
 
 | Config | Downsampling Factor | Latent Size | embed_dim | Codebook Size |
 |--------|---------------------|-------------|-----------|---------------|
-| config_train.yaml | f4 | 64×64 | 3 | 8192 |
+| config_train_f4.yaml | f4 | 64×64 | 3 | 8192 |
 | config_train_f16.yaml | f16 | 16×16 | 8 | 16384 |
 
 ## Training
@@ -24,13 +24,13 @@ VQGAN encodes 256×256 images into a compressed latent representation using vect
 
 ```bash
 # Train f4 model from scratch
-python -m src.vqgan.main -c src/vqgan/configs/config_train.yaml
+python -m src.vqgan.main -c src/vqgan/configs/config_train_f4.yaml
 
 # Train f16 model
 python -m src.vqgan.main -c src/vqgan/configs/config_train_f16.yaml
 
 # Train with custom dataset path
-python -m src.vqgan.main -c src/vqgan/configs/config_train.yaml -d /path/to/dataset
+python -m src.vqgan.main -c src/vqgan/configs/config_train_f4.yaml -d /path/to/dataset
 ```
 
 ### Command Line Arguments
@@ -53,10 +53,10 @@ python -m src.vqgan.main -c src/vqgan/configs/config_train.yaml -d /path/to/data
 
 ```bash
 # Fine-tune from CelebA checkpoint (specified in config)
-python -m src.vqgan.main -c src/vqgan/configs/config_train.yaml
+python -m src.vqgan.main -c src/vqgan/configs/config_train_f4.yaml
 
 # Or specify checkpoint via command line
-python -m src.vqgan.main -c src/vqgan/configs/config_train.yaml -m checkpoints/CelebAMaskHQ-f4.ckpt
+python -m src.vqgan.main -c src/vqgan/configs/config_train_f4.yaml -m checkpoints/CelebAMaskHQ-f4.ckpt
 ```
 
 ### Resume Training

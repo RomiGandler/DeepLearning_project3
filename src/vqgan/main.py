@@ -37,7 +37,6 @@ def parse_args():
     parser.add_argument(
         "-c", "--config",
         type=str,
-        default="src/vqgan/config_test.yaml",
         help="Path to config file (default: src/vqgan/config_train.yaml)"
     )
     parser.add_argument(

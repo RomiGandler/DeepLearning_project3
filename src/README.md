@@ -59,8 +59,17 @@ python -m src.evaluation.evaluate_model --stage test --generated_dir path/to/out
 ## Model Checkpoints
 
 Models are automatically downloaded from HuggingFace (`roni-hershko/chess_model`) when needed:
-- `vqgan_f4.ckpt` / `vqgan_f8.ckpt` - VQGAN checkpoints
-- `latest_model_*.pth` - BBDM checkpoints
+
+### VQGAN Checkpoints
+- `vqgan_f4.ckpt` - VQGAN with f=4 downsampling factor
+- `vqgan_f16.ckpt` - VQGAN with f=16 downsampling factor
+- `CelebAMaskHQ-f4.ckpt` / `CelebAMaskHQ-f16.ckpt` - Pretrained CelebA models for finetuning "from scratch"
+
+### BBDM Checkpoints
+Naming convention: `bbdm_f{factor}_{variant}.ckpt`
+- `bbdm_f16.ckpt` / `bbdm_f4.ckpt` - Standard BBDM models
+- `bbdm_f16_masked_loss.ckpt` / `bbdm_f4_masked_loss.ckpt` - BBDM with masked loss
+- `bbdm_f16_mask_guided.ckpt` / `bbdm_f4_mask_guided.ckpt` - BBDM with mask guidance
 
 ## Dataset
 
@@ -70,9 +79,24 @@ Structure:
 ```
 dataset/
 ├── train/
-│   ├── A/          # Synthetic images (condition)
-│   ├── B/          # Real images (target)
-│   └── gt.csv      # FEN annotations
+│   ├── A/              # Synthetic images (condition)
+│   ├── B/              # Real images (target)
+│   ├── A_mask_black/   # Synthetic images with black pieces masked
+│   ├── A_mask_white/   # Synthetic images with white pieces masked
+│   ├── masks/          # Binary masks for pieces
+│   └── gt.csv          # FEN annotations
 ├── val/
+│   ├── A/
+│   ├── B/
+│   ├── A_mask_black/
+│   ├── A_mask_white/
+│   ├── masks/
+│   └── gt.csv
 └── test/
+    ├── A/
+    ├── B/
+    ├── A_mask_black/
+    ├── A_mask_white/
+    ├── masks/
+    └── gt.csv
 ```
