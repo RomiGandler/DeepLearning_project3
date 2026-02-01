@@ -41,7 +41,7 @@ class BBDMChessDataset(BaseChessDataset):
             image_size = dataset_config.image_size
             flip = dataset_config.flip if stage == 'train' else False
             to_normal = dataset_config.to_normal
-            use_masks = getattr(dataset_config, 'use_masks', True)
+            use_masks = getattr(dataset_config, 'use_masks', False)
             dataset_path = getattr(dataset_config, 'dataset_path', None)
         
         self.to_normal = to_normal

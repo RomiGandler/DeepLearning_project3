@@ -13,7 +13,8 @@ This module evaluates generated chessboard images by:
 ## Quick Start
 
 ### Evaluate Generated Images
-
+Note Well! as implied by the title, for this to work one has to first generate the images with the model.
+i.e for evaluation on test/ stage -> ensure you first ran the bbdm model "--sample-to-eval" flag on.
 ```bash
 # Evaluate model outputs against test set
 python -m src.evaluation.evaluate_model \

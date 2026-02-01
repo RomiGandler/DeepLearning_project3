@@ -77,7 +77,7 @@ model:
 
   VQGAN:
     params:
-      ckpt_path: "/home/avinoamd/roni/logs/vqgan/2026-02-01T08-14-03/checkpoints/epoch=000008-val/rec_loss=0.1330.ckpt"
+      ckpt_path: "vqgan_f16.ckpt"
       embed_dim: 8
       n_embed: 16384
       ddconfig:
