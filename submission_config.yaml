@@ -9,8 +9,8 @@ blender:
 models:
   # Paths to your trained models (relative to project root)
   # bbdm_config is optional for new checkpoints (config embedded in checkpoint)
-  bbdm_config: "/home/avinoamd/roni/src/bbdm/configs/f4_config.yaml"
-  bbdm_checkpoint: "latest_model_392.pth"
+  bbdm_config: "/home/avinoamd/roni/src/bbdm/configs/f16_mask_guided_config.yaml"
+  bbdm_checkpoint: "/home/avinoamd/roni/results/chess_bbdm_mask_guided_f16/MGLBBDM-f16/checkpoint/last_model.pth"
   # vqgan_checkpoint is optional for new checkpoints (VQGAN weights included in BBDM checkpoint)
 
 evaluation:
