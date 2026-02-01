@@ -49,30 +49,30 @@ model:
 # Data configuration
 data:
   params:
-    batch_size: 2
+    batch_size: 8
     num_workers: 8
     
     train:
       params:
-        size: 256
+        size: 480
         image_key: both    # 'A' for condition images, 'B' for target images, 'both' for all
     
     validation:
       params:
-        size: 256
+        size: 480
         image_key: both
     
     test:
       params:
-        size: 256
+        size: 480
         image_key: both
 
 # Training configuration (used by trainer.py CLI)
 training:
   test_only: false
-  max_epochs: 100
+  max_epochs: 30
   gpus: 1
-  precision: 32
+  precision: 16
   accumulate_grad_batches: 1
   log_every_n_steps: 50
   val_check_interval: 1.0

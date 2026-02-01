@@ -1,13 +1,23 @@
-# BBDM f16 Configuration (256 -> 16 latent)
-# ==========================================
+# Masked BBDM f16 Configuration (256 -> 16 latent)
+# ================================================
+# Uses mask-weighted loss for focused training on chess piece regions.
 # Uses VQGAN with f16 architecture (downsampling factor of 16)
 # Latent size: 256/16 = 16x16, z_channels: 8
 #
+# Directory structure expected:
+#   dataset_path/
+#   ├── train/
+#   │   ├── A/          # Condition images (synthetic)
+#   │   ├── B/          # Target images (real)
+#   │   └── masks/      # Single-channel masks for loss weighting
+#   ├── val/
+#   └── test/
+#
 # Usage:
-#   python -m src.bbdm.main -c src/bbdm/configs/f16_config.yaml -t  # Train
-#   python -m src.bbdm.main -c src/bbdm/configs/f16_config.yaml --sample_to_eval  # Evaluate
+#   python -m src.bbdm.main -c src/bbdm/configs/f16_masked_config.yaml -t  # Train
+#   python -m src.bbdm.main -c src/bbdm/configs/f16_masked_config.yaml --sample_to_eval  # Evaluate
 
-runner: "BBDMRunner"
+runner: "MaskedBBDMRunner"
 
 training:
   n_epochs: 150
@@ -22,15 +32,14 @@ testing:
   sample_num: 1
 
 data:
-  dataset_name: 'chess_bbdm_f16'
-  dataset_type: 'custom_aligned'
+  dataset_name: 'chess_bbdm_masked_f16'
+  dataset_type: 'masked_aligned'  # MUST use 'masked_aligned' with MaskedBBDMRunner
   dataset_config:
-    # Set to null to auto-download from HuggingFace, or provide local path
-    dataset_path: null
+    dataset_path: null  # Set to local path or null for HF download
     image_size: 256
     channels: 3
     to_normal: True
-    flip: False
+    flip: False  # Data already augmented
   train:
     batch_size: 30
     shuffle: True
@@ -41,18 +50,11 @@ data:
     batch_size: 8
 
 model:
-  model_name: "LBBDM-f16"
-  model_type: "LBBDM"
+  model_name: "MLBBDM-f16"
+  model_type: "LBBDM"  # MaskedBBDMRunner uses MaskedLatentBrownianBridgeModel internally
   latent_before_quant_conv: False
   normalize_latent: False
   only_load_latent_mean_std: False
-  
-  # BBDM Checkpoint Options:
-  #   - null: Train from scratch (default)
-  #   - "auto": Download default BBDM checkpoint from HuggingFace
-  #   - "auto:bbdm_f16.pth": Download specific checkpoint by name
-  #   - "bbdm_f16.pth": Download by filename (short form)
-  #   - "/path/to/checkpoint.pth": Load from local file
   model_load_path: null
 
   EMA:
@@ -68,10 +70,6 @@ model:
 
   VQGAN:
     params:
-      # VQGAN Checkpoint Options:
-      #   - null: Download default VQGAN from HuggingFace
-      #   - "vqgan_f16.ckpt": Download specific VQGAN by name
-      #   - "/path/to/vqgan.ckpt": Load from local file
       ckpt_path: "vqgan_f16.ckpt"
       embed_dim: 8
       n_embed: 16384
@@ -113,6 +111,11 @@ model:
       mt_type: 'linear'
       objective: 'grad'
       loss_type: 'l1'
+
+      # Masked loss scale: balance between regular loss and masked loss
+      # loss = (1 - scale) * regular_loss + scale * masked_loss
+      # Higher values focus more on masked regions (chess pieces)
+      masked_loss_scale: 0.75
 
       skip_sample: True
       sample_type: 'linear'
