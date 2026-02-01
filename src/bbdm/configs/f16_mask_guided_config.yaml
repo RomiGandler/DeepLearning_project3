@@ -1,4 +1,4 @@
-# Mask-Guided BBDM f16 Configuration (480 -> 30 latent)
+# Mask-Guided BBDM f16 Configuration (256 -> 16 latent)
 # =====================================================
 # Uses learned mask encoding for white/black piece guidance.
 # Masks are encoded via SpatialRescaler and concatenated to UNet input.
