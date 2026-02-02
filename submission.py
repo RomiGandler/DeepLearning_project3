@@ -183,13 +183,6 @@ def generate_chessboard_image(fen: str, viewpoint: str) -> None:
     except Exception as e:
         print(f"⚠️  Cropping failed: {e}")
 
-    # Flip synthetic image if black viewpoint (before BBDM)
-    if viewpoint == 'black':
-        print("🔄 Flipping synthetic image for black viewpoint...")
-        img = cv2.imread(path_synthetic)
-        img = cv2.rotate(img, cv2.ROTATE_180)
-        cv2.imwrite(path_synthetic, img)
-
     # ======================================================
     # Step 2: Generate Realistic Image (Using src/ Pipeline)
     # ======================================================
@@ -267,7 +260,17 @@ def generate_chessboard_image(fen: str, viewpoint: str) -> None:
             print(f"   ⚠️ Evaluation failed: {e}")
 
     # ======================================================
-    # Step 3: Create Side-by-Side Comparison
+    # Step 3: Rotate Images if Viewpoint is Black
+    # ======================================================
+    if viewpoint == 'black':
+        for p in [path_synthetic, path_realistic]:
+            img = cv2.imread(p)
+            if img is not None:
+                img = cv2.rotate(img, cv2.ROTATE_180)
+                cv2.imwrite(p, img)
+
+    # ======================================================
+    # Step 4: Create Side-by-Side Comparison
     # ======================================================
     print("🖼️ Creating Side-by-Side comparison...")
     
