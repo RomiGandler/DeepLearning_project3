@@ -7,11 +7,8 @@ blender:
   script_file: "etl/blender/generate_synthetic_from_fen.py"
 
 models:
-  # Paths to your trained models (relative to project root)
-  # bbdm_config is optional for new checkpoints (config embedded in checkpoint)
-  bbdm_config: "/home/avinoamd/roni/src/bbdm/configs/f16_mask_guided_config.yaml"
+  # Path to your trained model (relative to project root)
   bbdm_checkpoint: "/home/avinoamd/roni/results/chess_bbdm_mask_guided_f16/MGLBBDM-f16/checkpoint/last_model.pth"
-  # vqgan_checkpoint is optional for new checkpoints (VQGAN weights included in BBDM checkpoint)
 
 evaluation:
   # Set to true to run evaluation automatically
