@@ -4,7 +4,7 @@ blender:
   # Path to the .blend file (relative to project root)
   blend_file: "/home/avinoamd/roni/etl/blender/chess-set.blend"
   # Path to the python generation script (relative to project root)
-  script_file: "src/blender/generate_synthtic_from_fen.py"
+  script_file: "etl/blender/generate_synthetic_from_fen.py"
 
 models:
   # Paths to your trained models (relative to project root)
