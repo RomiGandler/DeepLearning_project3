@@ -26,9 +26,9 @@ conda activate chess-proj
 | Full Data Archive | [Google Drive](https://drive.google.com/drive/u/1/folders/1hjfmjmDeAmPB7TRIitV8vqELYtckigy1) |
 
 **Available checkpoints:**
-SAM3 - `sam3.pt`
-VQGAN - `vqgan_f16.ckpt` (***default***), `vqgan_f4.ckpt`, `CelebAMaskHQ-f4.ckpt`, CelebAMaskHQ-f16.ckpt,
-BBDM -  `bbdm_f16_mask_guided.pth` (***default***), `bbdm_f16_masked_loss.pth`, `bbdm_f16_mask_guided.pth`, `latest_model_392.pth` (f4)
+SAM3 - `sam3.pt`  
+VQGAN - `vqgan_f16.ckpt` (***default***), `vqgan_f4.ckpt`, `CelebAMaskHQ-f4.ckpt`, CelebAMaskHQ-f16.ckpt  
+BBDM -  `bbdm_f16_mask_guided.pth` (***default***), `bbdm_f16_masked_loss.pth`, `bbdm_f16_mask_guided.pth`, `latest_model_392.pth` (f4)  
 
 
 ### Automatic Download
