@@ -224,6 +224,7 @@ class BBDMPipeline:
     def generate_from_path(
         self,
         image_path: Union[str, Path],
+        masks: Optional[torch.Tensor] = None,
         clip_denoised: bool = False,
     ) -> Image.Image:
         """
@@ -231,6 +232,7 @@ class BBDMPipeline:
         
         Args:
             image_path: Path to condition image
+            masks: Optional [1, 2, H, W] tensor for mask-guided models
             clip_denoised: Whether to clip intermediate samples
             
         Returns:
@@ -238,7 +240,18 @@ class BBDMPipeline:
         """
         image = Image.open(image_path).convert("RGB")
         condition = self._preprocess(image).to(self.device)
-        output = self.generate(condition, clip_denoised)
+        
+        # Resize masks to match image_size if provided
+        if masks is not None:
+            if masks.dim() == 3:
+                masks = masks.unsqueeze(0)
+            if masks.shape[-1] != self.image_size:
+                masks = torch.nn.functional.interpolate(
+                    masks.float(), size=(self.image_size, self.image_size), mode='nearest'
+                )
+            masks = masks.to(self.device)
+        
+        output = self.generate(condition, masks=masks, clip_denoised=clip_denoised)
         return self._postprocess(output)
 
 
