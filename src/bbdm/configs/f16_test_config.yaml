@@ -53,8 +53,8 @@ model:
   #   - "auto:bbdm_f16.pth": Download specific checkpoint by name
   #   - "bbdm_f16.pth": Download by filename (short form)
   #   - "/path/to/checkpoint.pth": Load from local file
-  model_load_path: "/home/avinoamd/roni/results/chess_bbdm_f16/LBBDM-f16/checkpoint/last_model.pth"
-
+  model_load_path: "bbdm_f16.ckpt"
+  
   EMA:
     use_ema: True
     ema_decay: 0.995

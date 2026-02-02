@@ -1,6 +1,5 @@
 # =============================================================================
 # .gitignore for Chess Image Translation Project
-# Repository: /home/avinoamd/roni/
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -55,7 +54,7 @@ Thumbs.db
 # Blender Files (can be 500MB+)
 # -----------------------------------------------------------------------------
 # Allow specific chess set blend file
-**/chess-set.blend
+!etl/blender/chess-set.blend
 
 **/*.blend1
 **/*.blend~

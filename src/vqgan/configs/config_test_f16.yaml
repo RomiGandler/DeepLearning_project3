@@ -14,7 +14,7 @@ model:
     # Checkpoint name - downloads from HuggingFace if not found in checkpoints/
     # Examples: "vqgan_f16.ckpt", or null for training from scratch
     # Also supports full paths: "/path/to/model.ckpt"
-    ckpt: "/home/avinoamd/roni/logs/vqgan/2026-02-01T08-14-03/checkpoints/last.ckpt"  # Train from scratch for f16
+    ckpt: "vqgan_f16.ckpt" 
     
     # Codebook configuration
     embed_dim: 8        # Embedding dimension (d=8 for f16 model)

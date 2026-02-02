@@ -56,7 +56,7 @@ model:
   latent_before_quant_conv: False
   normalize_latent: False
   only_load_latent_mean_std: False
-  model_load_path: "/home/avinoamd/roni/results/chess_bbdm_masked_f16/MLBBDM-f16/checkpoint/last_model.pth"
+  model_load_path: "bbdm_f16_masked.ckpt"
 
   EMA:
     use_ema: True

@@ -28,4 +28,4 @@ dependencies:
     - einops
     - scipy
     - numpy
-    - matplotlib
+    - matplotlib  

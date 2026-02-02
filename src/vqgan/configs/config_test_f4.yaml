@@ -7,7 +7,7 @@ model:
     # Checkpoint name - downloads from HuggingFace if not found in checkpoints/
     # Examples: "vqgan_f4.ckpt", "vqgan_f8.ckpt", or null for training from scratch
     # Also supports full paths: "/path/to/model.ckpt"
-    ckpt: vqgan_f4.ckpt  # e.g., "vqgan_f4.ckpt"
+    ckpt: vqgan_f4.ckpt  
     
     # Codebook configuration
     embed_dim: 3        # Embedding dimension (d=3 for f4 model)
