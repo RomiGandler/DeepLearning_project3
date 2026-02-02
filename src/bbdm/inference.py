@@ -1,21 +1,17 @@
 """BBDM Inference API - simple model loading and generation.
 
-Usage (new checkpoints with embedded config):
+Usage (new checkpoints - self-contained):
     from src.bbdm.inference import load_pipeline
     
-    pipe = load_pipeline(
-        bbdm_checkpoint="bbdm_f8.pth",
-        vqgan_checkpoint="vqgan_f8.ckpt",
-    )
-    
+    pipe = load_pipeline("bbdm_f8.pth")
     result = pipe.generate_from_path("input.png")
     result.save("output.png")
 
-Usage (old checkpoints without embedded config):
+Usage (old checkpoints - need separate VQGAN):
     pipe = load_pipeline(
         bbdm_checkpoint="old_model.pth",
         vqgan_checkpoint="vqgan_f8.ckpt",
-        config="src/bbdm/configs/f8_config.yaml",  # Required for old checkpoints
+        config="src/bbdm/configs/f8_config.yaml",
     )
 """
 import torch
@@ -28,6 +24,7 @@ import torchvision.transforms as T
 from src.bbdm.checkpoint_utils import resolve_checkpoint, CHECKPOINTS_DIR
 from src.bbdm.model.BrownianBridge.LatentBrownianBridgeModel import LatentBrownianBridgeModel
 from src.bbdm.model.BrownianBridge.MaskedLatentBrownianBridgeModel import MaskedLatentBrownianBridgeModel
+from src.bbdm.model.BrownianBridge.MaskGuidedLatentBrownianBridgeModel import MaskGuidedLatentBrownianBridgeModel
 from src.bbdm.utils import dict2namespace
 
 
@@ -35,13 +32,10 @@ class BBDMPipeline:
     """
     Simple inference pipeline for BBDM.
     
-    New checkpoints (with embedded config):
-        pipe = BBDMPipeline(
-            bbdm_checkpoint="bbdm_f8.pth",
-            vqgan_checkpoint="vqgan_f8.ckpt",
-        )
+    New checkpoints (self-contained with VQGAN weights):
+        pipe = BBDMPipeline(bbdm_checkpoint="bbdm_f8.pth")
     
-    Old checkpoints (require config file):
+    Old checkpoints (require separate VQGAN):
         pipe = BBDMPipeline(
             bbdm_checkpoint="old_model.pth",
             vqgan_checkpoint="vqgan_f8.ckpt",
@@ -52,7 +46,7 @@ class BBDMPipeline:
     def __init__(
         self,
         bbdm_checkpoint: str,
-        vqgan_checkpoint: str,
+        vqgan_checkpoint: Optional[str] = None,
         config: Optional[Union[str, Path]] = None,
         device: str = "cuda",
         checkpoints_dir: Path = CHECKPOINTS_DIR,
@@ -63,8 +57,8 @@ class BBDMPipeline:
         Args:
             bbdm_checkpoint: BBDM checkpoint name or path (e.g., "bbdm_f8.pth").
                             Downloads from HF if not found locally.
-            vqgan_checkpoint: VQGAN checkpoint name or path (e.g., "vqgan_f8.ckpt").
-                             Downloads from HF if not found locally.
+            vqgan_checkpoint: Optional VQGAN checkpoint. Not needed for new checkpoints
+                             (VQGAN weights included). Required for old checkpoints.
             config: Path to config yaml file. Optional for new checkpoints
                    (config embedded), required for old checkpoints.
             device: "cuda" or "cpu".
@@ -81,16 +75,35 @@ class BBDMPipeline:
         # Get config: from checkpoint (preferred) or from file (fallback)
         self.config = self._load_config(state, config)
         
-        # Override VQGAN checkpoint path with user-provided one
-        vqgan_path = resolve_checkpoint(vqgan_checkpoint, self.checkpoints_dir)
-        self.config.model.VQGAN.params.ckpt_path = str(vqgan_path)
+        # Handle VQGAN: use provided path, or rely on checkpoint containing VQGAN weights
+        has_vqgan_in_checkpoint = any(k.startswith('vqgan.') for k in state['model'].keys())
         
-        # Initialize model
+        if vqgan_checkpoint is not None:
+            # User provided explicit VQGAN - use it
+            vqgan_path = resolve_checkpoint(vqgan_checkpoint, self.checkpoints_dir)
+            self.config.model.VQGAN.params.ckpt_path = str(vqgan_path)
+        elif has_vqgan_in_checkpoint:
+            # VQGAN weights in BBDM checkpoint - don't load separately
+            self.config.model.VQGAN.params.ckpt_path = None
+        else:
+            # Old checkpoint without VQGAN - need separate file
+            raise ValueError(
+                "This BBDM checkpoint doesn't contain VQGAN weights. "
+                "Please provide vqgan_checkpoint parameter."
+            )
+        
+        # Initialize model based on config type
         print("Initializing model...")
-        if hasattr(self.config.model.BB.params, 'masked_loss_scale'):
+        if hasattr(self.config.model, 'MaskEncoder'):
+            self.model = MaskGuidedLatentBrownianBridgeModel(self.config.model)
+            self.is_mask_guided = True
+            print("Loaded mask-guided model (requires masks during inference)")
+        elif hasattr(self.config.model.BB.params, 'masked_loss_scale'):
             self.model = MaskedLatentBrownianBridgeModel(self.config.model)
+            self.is_mask_guided = False
         else:
             self.model = LatentBrownianBridgeModel(self.config.model)
+            self.is_mask_guided = False
         
         # Load BBDM weights
         print(f"Loading BBDM weights...")
@@ -173,6 +186,7 @@ class BBDMPipeline:
     def generate(
         self,
         condition: torch.Tensor,
+        masks: Optional[torch.Tensor] = None,
         clip_denoised: bool = False,
     ) -> torch.Tensor:
         """
@@ -180,19 +194,37 @@ class BBDMPipeline:
         
         Args:
             condition: [B, 3, H, W] tensor (should be in [-1,1] if to_normal=True)
+            masks: [B, 2, H, W] tensor for mask-guided models (white mask ch0, black mask ch1)
             clip_denoised: Whether to clip intermediate samples
             
         Returns:
             Generated images: [B, 3, H, W] tensor
         """
+        # Validate mask usage
+        if self.is_mask_guided and masks is None:
+            raise ValueError(
+                "This is a mask-guided model. You must provide masks during inference. "
+                "Pass masks=[B, 2, H, W] tensor with white piece mask in channel 0, black in channel 1."
+            )
+        if not self.is_mask_guided and masks is not None:
+            raise ValueError(
+                "This model was not trained with mask guidance. "
+                "Do not provide masks during inference."
+            )
+        
         condition = condition.to(self.device)
-        output = self.model.sample(condition, clip_denoised=clip_denoised)
+        if masks is not None:
+            masks = masks.to(self.device)
+            output = self.model.sample(condition, masks, clip_denoised=clip_denoised)
+        else:
+            output = self.model.sample(condition, clip_denoised=clip_denoised)
         return output
     
     @torch.no_grad()
     def generate_from_path(
         self,
         image_path: Union[str, Path],
+        masks: Optional[torch.Tensor] = None,
         clip_denoised: bool = False,
     ) -> Image.Image:
         """
@@ -200,6 +232,7 @@ class BBDMPipeline:
         
         Args:
             image_path: Path to condition image
+            masks: Optional [1, 2, H, W] tensor for mask-guided models
             clip_denoised: Whether to clip intermediate samples
             
         Returns:
@@ -207,13 +240,24 @@ class BBDMPipeline:
         """
         image = Image.open(image_path).convert("RGB")
         condition = self._preprocess(image).to(self.device)
-        output = self.generate(condition, clip_denoised)
+        
+        # Resize masks to match image_size if provided
+        if masks is not None:
+            if masks.dim() == 3:
+                masks = masks.unsqueeze(0)
+            if masks.shape[-1] != self.image_size:
+                masks = torch.nn.functional.interpolate(
+                    masks.float(), size=(self.image_size, self.image_size), mode='nearest'
+                )
+            masks = masks.to(self.device)
+        
+        output = self.generate(condition, masks=masks, clip_denoised=clip_denoised)
         return self._postprocess(output)
 
 
 def load_pipeline(
     bbdm_checkpoint: str,
-    vqgan_checkpoint: str,
+    vqgan_checkpoint: Optional[str] = None,
     config: Optional[Union[str, Path]] = None,
     device: str = "cuda",
 ) -> BBDMPipeline:
@@ -223,8 +267,8 @@ def load_pipeline(
     Args:
         bbdm_checkpoint: BBDM checkpoint name or path (e.g., "bbdm_f8.pth").
                         Downloads from HF if not found locally.
-        vqgan_checkpoint: VQGAN checkpoint name or path (e.g., "vqgan_f8.ckpt").
-                         Downloads from HF if not found locally.
+        vqgan_checkpoint: Optional VQGAN checkpoint. Not needed for new checkpoints
+                         (VQGAN weights included). Required for old checkpoints.
         config: Path to config yaml file. Optional for new checkpoints
                (config embedded), required for old checkpoints.
         device: "cuda" or "cpu".
@@ -232,15 +276,15 @@ def load_pipeline(
     Returns:
         BBDMPipeline ready for inference.
         
-    Example (new checkpoint with embedded config):
-        pipe = load_pipeline("bbdm_f8.pth", "vqgan_f8.ckpt")
+    Example (new checkpoint - self-contained):
+        pipe = load_pipeline("bbdm_f8.pth")
         result = pipe.generate_from_path("input.png")
         result.save("output.png")
         
-    Example (old checkpoint without embedded config):
+    Example (old checkpoint - needs VQGAN):
         pipe = load_pipeline(
             "old_model.pth",
-            "vqgan_f8.ckpt",
+            vqgan_checkpoint="vqgan_f8.ckpt",
             config="src/bbdm/configs/f8_config.yaml"
         )
     """

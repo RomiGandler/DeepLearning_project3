@@ -17,7 +17,8 @@ from src.bbdm.inference import BBDMPipeline
 from src.evaluation.evaluate_model import evaluate_single
 from src.evaluation.sam_grid_extractor import SAMGridExtractor
 from src.evaluation.data_saver import DataSaver
-from src.blender.crop_board import process_single_image
+from etl.blender.crop_board import process_single_image
+from etl.augmentations.mask_extraction import SAMMaskExtractor
 
 # ==========================================
 # Helper Functions
@@ -68,6 +69,7 @@ def load_config():
 # Global cache
 _PIPELINE = None
 _EXTRACTOR = None
+_MASK_EXTRACTOR = None
 _CONFIG = None
 
 def get_config():
@@ -83,9 +85,9 @@ def get_pipeline():
         print("🔧 Loading BBDM Pipeline...")
         # Resolve paths relative to current working directory
         _PIPELINE = BBDMPipeline(
-            config=cfg['models']['bbdm_config'],
+            config=cfg['models'].get('bbdm_config'),
             bbdm_checkpoint=cfg['models']['bbdm_checkpoint'],
-            vqgan_checkpoint=cfg['models']['vqgan_checkpoint'],
+            vqgan_checkpoint=cfg['models'].get('vqgan_checkpoint'),  # Optional for new checkpoints
             device="cuda" if torch.cuda.is_available() else "cpu"
         )
     return _PIPELINE
@@ -96,6 +98,14 @@ def get_extractor():
         print("🔧 Loading SAM Grid Extractor...")
         _EXTRACTOR = SAMGridExtractor()
     return _EXTRACTOR
+
+def get_mask_extractor():
+    global _MASK_EXTRACTOR
+    if _MASK_EXTRACTOR is None:
+        print("🔧 Loading SAM Mask Extractor...")
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        _MASK_EXTRACTOR = SAMMaskExtractor(device=device)
+    return _MASK_EXTRACTOR
 
 # ==========================================
 # Main Function
@@ -123,6 +133,11 @@ def generate_chessboard_image(fen: str, viewpoint: str) -> None:
     # ======================================================
     # Step 1: Generate Synthetic Image (Using Blender)
     # ======================================================
+    # Clean up old files to ensure fresh generation
+    for p in [path_synthetic, path_realistic, path_sbs]:
+        if os.path.exists(p):
+            os.remove(p)
+    
     print(f"🎨 Generating Synthetic Image for Viewpoint: {viewpoint}...")
     
     blender_exec = cfg['blender']['exec_path']
@@ -176,9 +191,27 @@ def generate_chessboard_image(fen: str, viewpoint: str) -> None:
     try:
         pipeline = get_pipeline()
         
+        # For mask-guided models, extract masks using SAM
+        masks = None
+        if pipeline.is_mask_guided:
+            print("📍 Extracting piece masks using SAM...")
+            extractor = get_mask_extractor()
+            image_bgr = cv2.imread(path_synthetic)
+            black_mask, white_mask = extractor.extract_masks(image_bgr)
+            if black_mask is not None and white_mask is not None:
+                masks = torch.stack([
+                    torch.from_numpy(white_mask.astype(np.float32)),
+                    torch.from_numpy(black_mask.astype(np.float32))
+                ], dim=0).unsqueeze(0)
+            else:
+                print("⚠️  SAM couldn't detect pieces, proceeding without masks...")
+        
+        clip_denoised = getattr(getattr(pipeline.config, 'testing', None), 'clip_denoised', False)
+        
         real_img_pil = pipeline.generate_from_path(
-            path_synthetic, 
-            clip_denoised=pipeline.config.testing.clip_denoised
+            path_synthetic,
+            masks=masks,
+            clip_denoised=clip_denoised
         )
         real_img_pil.save(path_realistic)
     except Exception as e:
@@ -230,15 +263,11 @@ def generate_chessboard_image(fen: str, viewpoint: str) -> None:
     # Step 3: Rotate Images if Viewpoint is Black
     # ======================================================
     if viewpoint == 'black':
-        print("🔄 Rotating images 180 degrees (black viewpoint)...")
-        
         for p in [path_synthetic, path_realistic]:
             img = cv2.imread(p)
             if img is not None:
                 img = cv2.rotate(img, cv2.ROTATE_180)
                 cv2.imwrite(p, img)
-            else:
-                print(f"⚠️  Could not rotate {p}: Image not found or invalid.")
 
     # ======================================================
     # Step 4: Create Side-by-Side Comparison

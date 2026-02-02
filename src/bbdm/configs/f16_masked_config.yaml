@@ -1,18 +1,26 @@
-# Masked BBDM Configuration (f8 architecture)
-# =============================================
-# Uses mask-weighted loss for focused training on specific regions.
-# Uses f8 architecture by default.
+# Masked BBDM f16 Configuration (256 -> 16 latent)
+# ================================================
+# Uses mask-weighted loss for focused training on chess piece regions.
+# Uses VQGAN with f16 architecture (downsampling factor of 16)
+# Latent size: 256/16 = 16x16, z_channels: 8
 #
-# For non-masked training, use example_config.yaml or f8_config.yaml instead.
+# Directory structure expected:
+#   dataset_path/
+#   ├── train/
+#   │   ├── A/          # Condition images (synthetic)
+#   │   ├── B/          # Target images (real)
+#   │   └── masks/      # Single-channel masks for loss weighting
+#   ├── val/
+#   └── test/
 #
 # Usage:
-#   python -m src.bbdm.main -c src/bbdm/configs/masked_config.yaml -t  # Train
-#   python -m src.bbdm.main -c src/bbdm/configs/masked_config.yaml --sample_to_eval  # Evaluate
+#   python -m src.bbdm.main -c src/bbdm/configs/f16_masked_config.yaml -t  # Train
+#   python -m src.bbdm.main -c src/bbdm/configs/f16_masked_config.yaml --sample_to_eval  # Evaluate
 
 runner: "MaskedBBDMRunner"
 
 training:
-  n_epochs: 300
+  n_epochs: 150
   n_steps: 200000
   save_interval: 2
   sample_interval: 2
@@ -24,29 +32,17 @@ testing:
   sample_num: 1
 
 data:
-  dataset_name: 'chess_bbdm_masked'
-  # MUST use 'masked_aligned' with MaskedBBDMRunner
-  dataset_type: 'masked_aligned'
+  dataset_name: 'chess_bbdm_masked_f16'
+  dataset_type: 'masked_aligned'  # MUST use 'masked_aligned' with MaskedBBDMRunner
   dataset_config:
-    # Dataset path options:
-    #   - null: Auto-download from HuggingFace (recommended for first run)
-    #   - "/path/to/dataset": Use local dataset directory
-    #
-    # Expected directory structure (masks/ required for masked training):
-    #   dataset_path/
-    #   ├── train/
-    #   │   ├── A/          # Condition images (input)
-    #   │   ├── B/          # Target images (ground truth)
-    #   │   └── masks/      # REQUIRED for masked training
-    #   ├── val/
-    #   └── test/
-    dataset_path: null
+    dataset_path: null  # Set to local path or null for HF download
     image_size: 256
     channels: 3
     to_normal: True
-    flip: True
+    flip: False  # Data already augmented
+    use_masks: True
   train:
-    batch_size: 8
+    batch_size: 30
     shuffle: True
   val:
     batch_size: 8
@@ -55,20 +51,12 @@ data:
     batch_size: 8
 
 model:
-  model_name: "MLBBDM-chess"
+  model_name: "MLBBDM-f16"
   model_type: "LBBDM"  # MaskedBBDMRunner uses MaskedLatentBrownianBridgeModel internally
   latent_before_quant_conv: False
   normalize_latent: False
   only_load_latent_mean_std: False
-  
-  # BBDM Checkpoint Options:
-  #   - null: Train from scratch (default)
-  #   - "auto": Download default BBDM checkpoint from HuggingFace
-  #   - "auto:bbdm_masked_f8.pth": Download specific checkpoint by name
-  #   - "bbdm_masked.pth": Download by filename (short form)
-  #   - "/path/to/checkpoint.pth": Load from local file
-  # model_load_path: null
-  # optim_sche_load_path: null
+  model_load_path: null
 
   EMA:
     use_ema: True
@@ -77,34 +65,31 @@ model:
     start_ema_step: 30000
 
   CondStageParams:
-    n_stages: 3
+    n_stages: 4
     in_channels: 3
-    out_channels: 4
+    out_channels: 8
 
   VQGAN:
     params:
-      # VQGAN Checkpoint Options:
-      #   - null: Download default VQGAN (vqgan_f8.ckpt) from HuggingFace
-      #   - "vqgan_f8.ckpt": Download specific VQGAN by name
-      #   - "/path/to/vqgan.ckpt": Load from local file
-      ckpt_path: null
-      embed_dim: 4
+      ckpt_path: "vqgan_f16.ckpt"
+      embed_dim: 8
       n_embed: 16384
       ddconfig:
         double_z: false
-        z_channels: 4
+        z_channels: 8
         resolution: 256
         in_channels: 3
         out_ch: 3
         ch: 128
         ch_mult: !!python/tuple
           - 1
+          - 1
           - 2
           - 2
           - 4
         num_res_blocks: 2
         attn_resolutions:
-          - 32
+          - 16
         dropout: 0.0
       lossconfig:
         target: torch.nn.Identity
@@ -127,10 +112,10 @@ model:
       mt_type: 'linear'
       objective: 'grad'
       loss_type: 'l1'
-      
+
       # Masked loss scale: balance between regular loss and masked loss
       # loss = (1 - scale) * regular_loss + scale * masked_loss
-      # Higher values focus more on masked regions (0.0 = ignore masks, 1.0 = only masked regions)
+      # Higher values focus more on masked regions (chess pieces)
       masked_loss_scale: 0.75
 
       skip_sample: True
@@ -142,15 +127,15 @@ model:
       max_var: 1.0
 
       UNetParams:
-        image_size: 32
-        in_channels: 4
+        image_size: 16  # 256/16 = 16 latent size
+        in_channels: 8
         model_channels: 128
-        out_channels: 4
+        out_channels: 8
         num_res_blocks: 2
         attention_resolutions: !!python/tuple
-          - 32
           - 16
           - 8
+          - 4
         channel_mult: !!python/tuple
           - 1
           - 4

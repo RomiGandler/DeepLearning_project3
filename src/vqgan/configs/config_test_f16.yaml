@@ -14,7 +14,7 @@ model:
     # Checkpoint name - downloads from HuggingFace if not found in checkpoints/
     # Examples: "vqgan_f16.ckpt", or null for training from scratch
     # Also supports full paths: "/path/to/model.ckpt"
-    ckpt: "CelebAMaskHQ-f16.ckpt"  # Train from scratch for f16
+    ckpt: "/home/avinoamd/roni/logs/vqgan/2026-02-01T08-14-03/checkpoints/last.ckpt"  # Train from scratch for f16
     
     # Codebook configuration
     embed_dim: 8        # Embedding dimension (d=8 for f16 model)
@@ -49,30 +49,30 @@ model:
 # Data configuration
 data:
   params:
-    batch_size: 8
+    batch_size: 2
     num_workers: 8
     
     train:
       params:
-        size: 480
+        size: 256
         image_key: both    # 'A' for condition images, 'B' for target images, 'both' for all
     
     validation:
       params:
-        size: 480
+        size: 256
         image_key: both
     
     test:
       params:
-        size: 480
+        size: 256
         image_key: both
 
 # Training configuration (used by trainer.py CLI)
 training:
-  test_only: false
-  max_epochs: 30
+  test_only: true
+  max_epochs: 100
   gpus: 1
-  precision: 16
+  precision: 32
   accumulate_grad_batches: 1
   log_every_n_steps: 50
   val_check_interval: 1.0

@@ -49,11 +49,13 @@ Thumbs.db
 **/*.bmp
 **/tensorboard/
 **/*.txt
+**/tmp
+*.sh
 # -----------------------------------------------------------------------------
 # Blender Files (can be 500MB+)
 # -----------------------------------------------------------------------------
 # Allow specific chess set blend file
-!/blender/chess-set.blend
+**/chess-set.blend
 
 **/*.blend1
 **/*.blend~

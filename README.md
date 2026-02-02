@@ -65,15 +65,15 @@ blender:
   # Path to the 3D chess set model
   blend_file: "blender/chess-set.blend"
   # Script that generates synthetic images from FEN
-  script_file: "src/blender/generate_synthtic_from_fen.py"
+  script_file: "etl/blender/generate_synthtic_from_fen.py"
 
 models:
   # BBDM config file (f4, f8, or f16)
   bbdm_config: "src/bbdm/configs/f4_config.yaml"
   # BBDM checkpoint - auto-downloads if just filename
-  bbdm_checkpoint: "latest_model_392.pth"
+  bbdm_checkpoint: "bbdm_f16_mask_guided.pth"
   # VQGAN checkpoint - auto-downloads if just filename
-  vqgan_checkpoint: "vqgan_f4.ckpt"
+  vqgan_checkpoint: "vqgan_f16.ckpt"
 
 evaluation:
   # Enable SAM-based piece detection evaluation
@@ -138,10 +138,10 @@ python -m src.vqgan.main -c src/vqgan/configs/config_train_f16.yaml --epochs 100
 python -m src.bbdm.main -c src/bbdm/configs/f4_config.yaml -t
 
 # f8 config (32×32 latent)
-python -m src.bbdm.main -c src/bbdm/configs/f8_config.yaml -t
 
-# f4 masked config
-python -m src.bbdm.main -c src/bbdm/configs/masked_config.yaml -t
+
+# f16 masked config
+python -m src.bbdm.main -c src/bbdm/configs/f16_masked_config.yaml -t
 
 # Multi-GPU training
 python -m src.bbdm.main -c src/bbdm/configs/f8_config.yaml -t --gpu_ids 0,1,2,3
@@ -152,13 +152,23 @@ python -m src.bbdm.main -c src/bbdm/configs/f4_config.yaml -t \ --resume_model c
 
 ---
 
-## Evaluation
+## Test and Evaluation (Our Accuracy Score)
+First, generate test samples with a model (config) of your choice
 
 ```bash
 # Evaluate with local dataset
-python -m src.evaluation.evaluate_model --dataset_path ./data/dataset --stage test --generated_dir ./results
+python -m src.bbdm.main -c <your_config> --sample-to-eval
+```
+in our pipeline, the generated images will be saved by default to results/<dataset name from config> / <model name from config> / samples_to_eval / 200 (but this can be configured).
+
+Once images are generated, run evaluation using:
+
+```bash
+# Evaluate with local dataset
+python -m src.evaluation.evaluate_model --dataset_path ./data/dataset --stage test --generated_dir <models_results_dir>
 ```
 
+IMPORTANT NOTE - if you choose to run evaluation of a dataset that isn't straight from the dataset, you'd have to modify the "gt.csv" file being used to include your new FENs and image names.
 ---
 
 ## Project Structure
