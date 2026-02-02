@@ -18,6 +18,7 @@ from src.evaluation.evaluate_model import evaluate_single
 from src.evaluation.sam_grid_extractor import SAMGridExtractor
 from src.evaluation.data_saver import DataSaver
 from src.blender.crop_board import process_single_image
+from etl.augmentations.mask_extraction import SAMMaskExtractor
 
 # ==========================================
 # Helper Functions
@@ -68,6 +69,7 @@ def load_config():
 # Global cache
 _PIPELINE = None
 _EXTRACTOR = None
+_MASK_EXTRACTOR = None
 _CONFIG = None
 
 def get_config():
@@ -96,6 +98,14 @@ def get_extractor():
         print("🔧 Loading SAM Grid Extractor...")
         _EXTRACTOR = SAMGridExtractor()
     return _EXTRACTOR
+
+def get_mask_extractor():
+    global _MASK_EXTRACTOR
+    if _MASK_EXTRACTOR is None:
+        print("🔧 Loading SAM Mask Extractor...")
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        _MASK_EXTRACTOR = SAMMaskExtractor(device=device)
+    return _MASK_EXTRACTOR
 
 # ==========================================
 # Main Function
@@ -176,9 +186,27 @@ def generate_chessboard_image(fen: str, viewpoint: str) -> None:
     try:
         pipeline = get_pipeline()
         
+        # For mask-guided models, extract masks using SAM
+        masks = None
+        if pipeline.is_mask_guided:
+            print("📍 Extracting piece masks using SAM...")
+            extractor = get_mask_extractor()
+            image_bgr = cv2.imread(path_synthetic)
+            black_mask, white_mask = extractor.extract_masks(image_bgr)
+            if black_mask is not None and white_mask is not None:
+                masks = torch.stack([
+                    torch.from_numpy(white_mask.astype(np.float32)),
+                    torch.from_numpy(black_mask.astype(np.float32))
+                ], dim=0).unsqueeze(0)
+            else:
+                print("⚠️  SAM couldn't detect pieces, proceeding without masks...")
+        
+        clip_denoised = getattr(getattr(pipeline.config, 'testing', None), 'clip_denoised', False)
+        
         real_img_pil = pipeline.generate_from_path(
-            path_synthetic, 
-            clip_denoised=pipeline.config.testing.clip_denoised
+            path_synthetic,
+            masks=masks,
+            clip_denoised=clip_denoised
         )
         real_img_pil.save(path_realistic)
     except Exception as e:

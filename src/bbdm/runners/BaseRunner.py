@@ -183,7 +183,8 @@ class BaseRunner(ABC):
             'model': namespace2dict(self.config.model),
             'data': {
                 'dataset_config': namespace2dict(self.config.data.dataset_config)
-            }
+            },
+            'testing': namespace2dict(self.config.testing) if hasattr(self.config, 'testing') else {'clip_denoised': False}
         }
         
         return model_states, optimizer_scheduler_states
