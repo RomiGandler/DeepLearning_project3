@@ -160,9 +160,9 @@ Checkpoints can be specified as:
 ### Model Checkpoint Naming
 
 BBDM checkpoints are saved as: `bbdm_f{factor}_{variant}.ckpt`
-- `bbdm_f16.ckpt` / `bbdm_f4.ckpt` - Standard BBDM
-- `bbdm_f16_masked_loss.ckpt` / `bbdm_f4_masked_loss.ckpt` - Masked loss variant
-- `bbdm_f16_mask_guided.ckpt` / `bbdm_f4_mask_guided.ckpt` - Mask guided variant
+- `bbdm_f16.pth` - Standard BBDM
+- `bbdm_f16_masked_loss.pth` - Masked loss variant
+- `bbdm_f16_mask_guided.pth` - Mask guided variant
 
 ## Output Structure
 
