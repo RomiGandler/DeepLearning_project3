@@ -8,7 +8,7 @@ blender:
 
 models:
   # Path to your trained model (relative, absolute, or just filename to be taken from huggingface). 
-  bbdm_checkpoint: "bbdm_f16.pth"
+  bbdm_checkpoint: "bbdm_f16_mask_guided.pth"
 
 evaluation:
   # Set to true to run evaluation automatically
