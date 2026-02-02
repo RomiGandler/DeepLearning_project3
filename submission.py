@@ -133,6 +133,11 @@ def generate_chessboard_image(fen: str, viewpoint: str) -> None:
     # ======================================================
     # Step 1: Generate Synthetic Image (Using Blender)
     # ======================================================
+    # Clean up old files to ensure fresh generation
+    for p in [path_synthetic, path_realistic, path_sbs]:
+        if os.path.exists(p):
+            os.remove(p)
+    
     print(f"🎨 Generating Synthetic Image for Viewpoint: {viewpoint}...")
     
     blender_exec = cfg['blender']['exec_path']
