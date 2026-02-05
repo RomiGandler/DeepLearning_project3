@@ -42,13 +42,13 @@ data:
     flip: False  # Data already augmented
     use_masks: True
   train:
-    batch_size: 30
+    batch_size: 4
     shuffle: True
   val:
-    batch_size: 8
+    batch_size: 2
     shuffle: True
   test:
-    batch_size: 8
+    batch_size: 2
 
 model:
   model_name: "MLBBDM-f16"
@@ -56,7 +56,7 @@ model:
   latent_before_quant_conv: False
   normalize_latent: False
   only_load_latent_mean_std: False
-  model_load_path: "bbdm_f16_masked.ckpt"
+  model_load_path: bbdm_f16_masked_loss.pth
 
   EMA:
     use_ema: True

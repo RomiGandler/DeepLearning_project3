@@ -38,7 +38,8 @@ Models and dataset are **automatically downloaded** when needed:
 
 1. **Model checkpoints** - When you specify a filename (e.g., `vqgan_f4.ckpt`) in the config, the code checks if it exists in `./checkpoints/`. If not found, it downloads from `roni-hershko/chess_model` via the `HFResourceManager` in `src/data/hf_downloader.py`.
 
-2. **Dataset** - When `dataset_path: null` in BBDM/VQGAN configs, the dataset auto-downloads from `roni-hershko/chess_data` to `src/data/dataset/`.
+2. **Dataset** - When `dataset_path: null` in BBDM/VQGAN configs, the dataset auto-downloads from `roni-hershko/chess_data` to `src/data/dataset/`. 
+NOTE - this may take up to an hour on your first run
 
 3. **SAM model** - The evaluation module auto-downloads `sam3.pt` on first use.
 
@@ -164,7 +165,7 @@ First, generate test samples with a model (config) of your choice
 
 ```bash
 # Evaluate with local dataset
-python -m src.bbdm.main -c <your_config> --sample-to-eval
+python -m src.bbdm.main -c <your_config_path> --sample_to_eval
 ```
 in our pipeline, the generated images will be saved by default to results/<dataset name from config> / <model name from config> / samples_to_eval / 200 (but this can be configured).
 

@@ -32,13 +32,13 @@ data:
     to_normal: True
     flip: False
   train:
-    batch_size: 30
+    batch_size: 4
     shuffle: True
   val:
-    batch_size: 8
+    batch_size: 2
     shuffle: True
   test:
-    batch_size: 8
+    batch_size: 2
 
 model:
   model_name: "LBBDM-f16"
@@ -53,7 +53,7 @@ model:
   #   - "auto:bbdm_f16.pth": Download specific checkpoint by name
   #   - "bbdm_f16.pth": Download by filename (short form)
   #   - "/path/to/checkpoint.pth": Load from local file
-  model_load_path: "bbdm_f16.ckpt"
+  model_load_path: "bbdm_f16.pth"
   
   EMA:
     use_ema: True
