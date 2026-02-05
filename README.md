@@ -16,7 +16,6 @@ conda activate chess-proj
 ```
 
 ---
-
 ## Data & Models
 
 | Resource | Location |
