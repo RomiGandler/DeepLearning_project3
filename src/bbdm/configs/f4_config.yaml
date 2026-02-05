@@ -47,7 +47,7 @@ model:
   latent_before_quant_conv: False
   normalize_latent: False
   only_load_latent_mean_std: False
-  model_load_path: "bbdm_f4.ckpt"
+  model_load_path: "bbdm_f4.pth"
   # optim_sche_load_path: null
 
   EMA:

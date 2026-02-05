@@ -138,7 +138,6 @@ python -m src.vqgan.main -c src/vqgan/configs/config_train_f4.yaml --epochs 100
 ```
 
 ### Train BBDM (Step 2)
-###temporary only f4 is working, for now use f4 untill will be fixed 
 
 ```bash
 

@@ -123,7 +123,7 @@ class VQGANTrainer:
         model_config = self.config.model
         
         # Resolve checkpoint (Ultralytics-style: just specify filename)
-        # Supports: "vqgan_f4.ckpt", "vqgan_f8.ckpt", "/full/path/model.ckpt", or null
+        # Supports: "vqgan_f4.ckpt", "vqgan_f16.ckpt", "/full/path/model.ckpt", or null
         ckpt = model_config.params.get("ckpt")
         loader = VQGANCheckpointLoader()
         try:
