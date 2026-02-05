@@ -27,7 +27,7 @@ conda activate chess-proj
 **Available checkpoints:**  
 SAM3 - `sam3.pt`  
 VQGAN - `vqgan_f16.ckpt` (***default***), `vqgan_f4.ckpt`, `CelebAMaskHQ-f4.ckpt`, CelebAMaskHQ-f16.ckpt  
-BBDM -  `bbdm_f16_mask_guided.pth` (***default***), `bbdm_f16_masked_loss.pth`, `bbdm_f16_mask_guided.pth`, `latest_model_392.pth` (f4)  
+BBDM -  `bbdm_f16_mask_guided.pth` (***default***), `bbdm_f16_masked_loss.pth`, `bbdm_f16.pth`, 'bbdm_f4.pth'  
 
 ### important note
 we had a problem uploading the new dataset to HF, meanwhile please upload the data from dataset.zip from https://drive.google.com/drive/u/1/folders/1hjfmjmDeAmPB7TRIitV8vqELYtckigy1 utill we fix this problem.
@@ -74,7 +74,7 @@ blender:
 
 models:
   # BBDM config file (f4, f8, or f16)
-  bbdm_config: "src/bbdm/configs/f4_config.yaml"
+  bbdm_config: "src/bbdm/configs/f16_mask_guided_config"
   # BBDM checkpoint - auto-downloads if just filename
   bbdm_checkpoint: "bbdm_f16_mask_guided.pth"
   # VQGAN checkpoint - auto-downloads if just filename
@@ -129,30 +129,32 @@ Results saved to `./results/`:
 ### Train VQGAN (Step 1)
 
 ```bash
-# f4 architecture (recommended)
+# f16 architecture (recommended)
+python -m src.vqgan.main -c src/vqgan/configs/config_train_f16.yaml --epochs 100
+
+# f4 architecture
 python -m src.vqgan.main -c src/vqgan/configs/config_train_f4.yaml --epochs 100
 
-# f16 architecture
-python -m src.vqgan.main -c src/vqgan/configs/config_train_f16.yaml --epochs 100
 ```
 
 ### Train BBDM (Step 2)
 
 ```bash
-# f4 config (64×64 latent)
-python -m src.bbdm.main -c src/bbdm/configs/f4_config.yaml -t
 
-# f8 config (32×32 latent)
-
+# f16 config
+python -m src.bbdm.main -c src/bbdm/configs/f16_config.yaml -t
 
 # f16 masked config
 python -m src.bbdm.main -c src/bbdm/configs/f16_masked_config.yaml -t
 
-# Multi-GPU training
-python -m src.bbdm.main -c src/bbdm/configs/f8_config.yaml -t --gpu_ids 0,1,2,3
+# f16 mask guided config
+python -m src.bbdm.main -c src/bbdm/configs/f16_mask_guided_config.yaml -t
+
+# f4 config 
+python -m src.bbdm.main -c src/bbdm/configs/f4_config.yaml -t
 
 # Resume training
-python -m src.bbdm.main -c src/bbdm/configs/f4_config.yaml -t \ --resume_model checkpoints/latest_model_392.pth
+python -m src.bbdm.main -c src/bbdm/configs/f16_mask_guided_config.yaml -t \ --resume_model checkpoints/bbdm_f16_mask_guided.pth
 ```
 
 ---
