@@ -58,6 +58,7 @@ class HFResourceManager:
             local_dir=str(dataset_dir),
             token=self.token,
             ignore_patterns=["*.ckpt", "*.pth", "*.pt"],  # Skip model files
+            etag_timeout=30,
         )
         
         print(f"Dataset downloaded to {local_path}")
