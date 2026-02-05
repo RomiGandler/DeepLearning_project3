@@ -40,14 +40,11 @@ NOTE - this may take up to an hour on your first run
 No manual setup required - just run the code and models download automatically.
 
 ### Manual Download (Optional)
-
 If you prefer to download manually:
 ```bash
 pip install huggingface_hub
-
 # Download all model checkpoints
 huggingface-cli download roni-hershko/chess_model --local-dir ./checkpoints
-
 # Download dataset
 huggingface-cli download roni-hershko/chess_data --repo-type dataset --local-dir ./data/dataset
 ```
@@ -162,7 +159,6 @@ First, generate test samples with a model (config) of your choice
 python -m src.bbdm.main -c <your_config_path> --sample_to_eval
 ```
 in our pipeline, the generated images will be saved by default to results/<dataset name from config> / <model name from config> / samples_to_eval / 200 (but this can be configured).
-
 Once images are generated, run evaluation using:
 
 ```bash
