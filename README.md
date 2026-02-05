@@ -30,6 +30,8 @@ SAM3 - `sam3.pt`
 VQGAN - `vqgan_f16.ckpt` (***default***), `vqgan_f4.ckpt`, `CelebAMaskHQ-f4.ckpt`, CelebAMaskHQ-f16.ckpt  
 BBDM -  `bbdm_f16_mask_guided.pth` (***default***), `bbdm_f16_masked_loss.pth`, `bbdm_f16_mask_guided.pth`, `latest_model_392.pth` (f4)  
 
+### important note
+we had a problem uploading the new dataset to HF, meanwhile please upload the data from dataset.zip from https://drive.google.com/drive/u/1/folders/1hjfmjmDeAmPB7TRIitV8vqELYtckigy1 utill we fix this problem.
 
 ### Automatic Download
 
