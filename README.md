@@ -131,7 +131,7 @@ Results saved to `./results/`:
 
 ```bash
 # f4 architecture (recommended)
-python -m src.vqgan.main -c src/vqgan/configs/config_train.yaml --epochs 100
+python -m src.vqgan.main -c src/vqgan/configs/config_train_f4.yaml --epochs 100
 
 # f16 architecture
 python -m src.vqgan.main -c src/vqgan/configs/config_train_f16.yaml --epochs 100
