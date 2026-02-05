@@ -32,12 +32,9 @@ BBDM -  `bbdm_f16_mask_guided.pth` (***default***), `bbdm_f16_masked_loss.pth`, 
 ### Automatic Download
 
 Models and dataset are **automatically downloaded** when needed:
-
 1. **Model checkpoints** - When you specify a filename (e.g., `vqgan_f4.ckpt`) in the config, the code checks if it exists in `./checkpoints/`. If not found, it downloads from `roni-hershko/chess_model` via the `HFResourceManager` in `src/data/hf_downloader.py`.
-
 2. **Dataset** - When `dataset_path: null` in BBDM/VQGAN configs, the dataset auto-downloads from `roni-hershko/chess_data` to `src/data/dataset/`. 
 NOTE - this may take up to an hour on your first run
-
 3. **SAM model** - The evaluation module auto-downloads `sam3.pt` on first use.
 
 No manual setup required - just run the code and models download automatically.
@@ -172,7 +169,7 @@ Once images are generated, run evaluation using:
 # Evaluate with local dataset
 python -m src.evaluation.evaluate_model --dataset_path ./src/data/dataset --stage test --generated_dir <models_results_dir- should be something like DeepLearning_project3/results/chess_bbdm_masked_f16/MLBBDM-f16/sample_to_eval/200>
 ```
-Evaluation outputs will be saved to: ./results/your model name/your model type/sample_to_eval/eval_output/debug and also a summary json of all evaluation metrics
+Evaluation outputs will be saved to ./results/your model name/your model type/sample_to_eval/eval_output/debug and a summary json of all evaluation metrics.
 
 IMPORTANT NOTE - if you choose to run evaluation of a dataset that isn't straight from the dataset, you'd have to modify the "gt.csv" file being used to include your new FENs and image names.
 ---
