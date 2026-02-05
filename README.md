@@ -178,22 +178,6 @@ python -m src.evaluation.evaluate_model --dataset_path ./data/dataset --stage te
 IMPORTANT NOTE - if you choose to run evaluation of a dataset that isn't straight from the dataset, you'd have to modify the "gt.csv" file being used to include your new FENs and image names.
 ---
 
-## Project Structure
-
-```
-├── submission.py           # Main inference script
-├── submission_config.yaml  # Configuration
-├── checkpoints/            # Model weights (auto-downloaded)
-├── blender/                # Blender project file
-├── results/                # Output images
-└── src/
-    ├── bbdm/               # BBDM diffusion model
-    ├── vqgan/              # VQGAN autoencoder
-    ├── evaluation/         # SAM-based evaluation
-    ├── blender/            # Synthetic image generation
-    └── data/               # Dataset utilities & HF downloader
-```
-
 ---
 
 ## Requirements
