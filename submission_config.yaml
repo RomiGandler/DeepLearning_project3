@@ -1,8 +1,8 @@
 blender:
   # Path to the Blender executable on the system
-  exec_path: "/home/nessm/blender-5.0.1-linux-x64/blender"
+  exec_path: "/home/hershkr/dl_intro/DeepLearning_project3/blender-5.0.1-linux-x64/blender"
   # Path to the .blend file (relative to project root or absolute path)
-  blend_file: "/home/nessm/etl/blender/chess-set.blend"
+  blend_file: "etl/blender/chess-set.blend"
   # Path to the python generation script (relative to project root or absolute path)
   script_file: "etl/blender/generate_synthetic_from_fen.py"
 
