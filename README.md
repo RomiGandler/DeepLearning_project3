@@ -173,7 +173,7 @@ Once images are generated, run evaluation using:
 
 ```bash
 # Evaluate with local dataset
-python -m src.evaluation.evaluate_model --dataset_path ./data/dataset --stage test --generated_dir <models_results_dir>
+python -m src.evaluation.evaluate_model --dataset_path <your_dataset_path:./data/dataset> --stage test --generated_dir <models_results_dir- should be something like DeepLearning_project3/results/chess_bbdm_masked_f16/MLBBDM-f16/sample_to_eval/200>
 ```
 
 IMPORTANT NOTE - if you choose to run evaluation of a dataset that isn't straight from the dataset, you'd have to modify the "gt.csv" file being used to include your new FENs and image names.
@@ -186,4 +186,3 @@ IMPORTANT NOTE - if you choose to run evaluation of a dataset that isn't straigh
 - Python 3.11
 - CUDA 12.1+ (for GPU)
 - Blender 5.0+ (for synthetic generation)
-- ~8GB GPU memory (inference), ~16GB (training)
