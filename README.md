@@ -22,7 +22,7 @@ conda activate chess-proj
 |----------|----------|
 | Models | [`roni-hershko/chess_model`](https://huggingface.co/roni-hershko/chess_model) (HuggingFace) |
 | Dataset | [`roni-hershko/chess_data`](https://huggingface.co/datasets/roni-hershko/chess_data) (HuggingFace) |
-| Full Data Archive | [Google Drive](https://drive.google.com/drive/u/1/folders/1hjfmjmDeAmPB7TRIitV8vqELYtckigy1) |
+| Full Data Archive | [Google Drive](https://drive.google.com/drive/u/1/folders/1hjfmjmDeAmPB7TRIitV8vqELYtckigy1) - dataset.zip|
 
 **Available checkpoints:**  
 SAM3 - `sam3.pt`  
